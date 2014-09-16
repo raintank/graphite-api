@@ -13,6 +13,7 @@ from .middleware import CORS, TrailingSlash
 from .search import IndexSearcher
 from .storage import Store
 from . import DEBUG
+from .session import raintankSessionInterface
 
 try:
     from logging.config import dictConfig
@@ -41,6 +42,9 @@ default_conf = {
         ],
     },
     'time_zone': get_localzone().zone,
+    'secret_key': 'this is a secret',
+    'session_cookie_name': 'connect.sess'
+
 }
 if default_conf['time_zone'] == 'local':  # tzlocal didn't find anything
     default_conf['time_zone'] = 'UTC'
@@ -129,6 +133,10 @@ def configure(app):
     app.config['GRAPHITE'] = loaded_config
     app.config['TIME_ZONE'] = config['time_zone']
     logger.info("configured timezone", timezone=app.config['TIME_ZONE'])
+
+    app.secret_key = config['secret_key']
+    app.session_cookie_name = config['session_cookie_name']
+    app.session_interface = raintankSessionInterface()
 
     if 'sentry_dsn' in config:
         try:

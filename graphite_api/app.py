@@ -10,7 +10,7 @@ from collections import defaultdict
 from datetime import datetime
 from io import StringIO, BytesIO
 
-from flask import Flask
+from flask import Flask, session, g
 from structlog import get_logger
 
 from .config import configure
@@ -67,6 +67,14 @@ except Exception:
 
 methods = ('GET', 'POST')
 
+# ensure the request is authenticated.
+@app.before_request
+def authenticate():
+    if 'account_id' in session and session['account_id']:
+       g.account = session['account_id']
+    else:
+       return jsonify({'error': "Not Authenticated"},
+                   status=403)
 
 # No-op routes, non-essential for creating dashboards
 @app.route('/dashboard/find', methods=methods)

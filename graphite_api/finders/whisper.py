@@ -3,7 +3,7 @@ from __future__ import absolute_import
 import gzip
 import os.path
 import time
-
+from flask import g
 from structlog import get_logger
 
 from ..intervals import Interval, IntervalSet
@@ -26,6 +26,7 @@ class WhisperFinder(object):
         pattern_parts = clean_pattern.split('.')
 
         for root_dir in self.directories:
+            root_dir = os.path.join(root_dir, g.account)
             if not os.path.isdir(root_dir):
                 os.makedirs(root_dir)
             for absolute_path in self._find_paths(root_dir, pattern_parts):
