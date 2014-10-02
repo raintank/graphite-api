@@ -70,11 +70,12 @@ methods = ('GET', 'POST')
 # ensure the request is authenticated.
 @app.before_request
 def authenticate():
-    if 'account_id' in session and session['account_id']:
+    if 'X-Admin-Token' in request.headers and request.headers['x-admin-token'] == app.config['admin_token']:
+        g.account = request.headers['x-account-id']
+    elif 'account_id' in session and session['account_id']:
        g.account = session['account_id']
     else:
-       return jsonify({'error': "Not Authenticated"},
-                   status=403)
+       return 'not authenticated', 403
 
 # No-op routes, non-essential for creating dashboards
 @app.route('/dashboard/find', methods=methods)
@@ -418,6 +419,8 @@ def render():
                 start_time = min([s.start for s in context['data']])
                 end_time = max([s.end for s in context['data']])
                 for series in context['data']:
+                    if RequestParams.get('graphiteCheck'):
+                        series.name = g.pathExpression
                     series_data.append(prune_datapoints(
                         series, request_options['maxDataPoints'],
                         start_time, end_time))
@@ -426,6 +429,8 @@ def render():
                     timestamps = range(series.start, series.end + series.step,
                                        series.step)
                     datapoints = zip(series, timestamps)
+                    if RequestParams.get('graphiteCheck'):
+                        series.name = g.pathExpression
                     series_data.append({'target': series.name,
                                         'datapoints': datapoints})
 
@@ -481,6 +486,7 @@ def evaluateTokens(requestContext, tokens):
         return evaluateTokens(requestContext, tokens.expression)
 
     elif tokens.pathExpression:
+        g.pathExpression = tokens.pathExpression
         return fetchData(requestContext, tokens.pathExpression)
 
     elif tokens.call:

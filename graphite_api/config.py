@@ -44,6 +44,7 @@ default_conf = {
     'time_zone': get_localzone().zone,
     'secret_key': 'this is a secret',
     'session_cookie_name': 'connect.sess'
+    'admin_token': 'jk832sjksf9asdkvnngddfg8sfk',
 
 }
 if default_conf['time_zone'] == 'local':  # tzlocal didn't find anything
@@ -137,7 +138,8 @@ def configure(app):
     app.secret_key = config['secret_key']
     app.session_cookie_name = config['session_cookie_name']
     app.session_interface = raintankSessionInterface()
-
+    app.config['admin_token'] = config['admin_token']
+    
     if 'sentry_dsn' in config:
         try:
             from raven.contrib.flask import Sentry
