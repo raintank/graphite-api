@@ -10,7 +10,7 @@ from collections import defaultdict
 from datetime import datetime
 from io import StringIO, BytesIO
 
-from flask import Flask, session, g
+from flask import Flask, session, g, request
 from structlog import get_logger
 
 from .config import configure
