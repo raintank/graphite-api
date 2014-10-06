@@ -9,9 +9,9 @@ def sign(val, app):
     return base64.b64encode(signed.digest()).strip(b'=')    
 
 class raintankSessionInterface(SessionInterface):
-    """The default session interface that stores sessions in signed cookies
-    through the :mod:`itsdangerous` module.
-    """
+    ''' Session class that can extract a signed cookie
+        created by the NodeJS Express framework.
+    '''
     session_class = SecureCookieSession
 
     def open_session(self, app, request):

@@ -14,6 +14,7 @@ from .search import IndexSearcher
 from .storage import Store
 from . import DEBUG
 from .session import raintankSessionInterface
+from flask.ext.pymongo import PyMongo
 
 try:
     from logging.config import dictConfig
@@ -45,6 +46,7 @@ default_conf = {
     'secret_key': 'this is a secret',
     'session_cookie_name': 'connect.sess'
     'admin_token': 'jk832sjksf9asdkvnngddfg8sfk',
+    'MONGO_URI': 'mongodb://dbuser:dbpass@localhost:27017/raintank',
 
 }
 if default_conf['time_zone'] == 'local':  # tzlocal didn't find anything
@@ -126,6 +128,9 @@ def configure(app):
     for functions in config['functions']:
         loaded_config['functions'].update(load_by_path(functions))
 
+    app.config['MONGO_URI'] = config['MONGO_URI']
+    app.mongo = PyMongo(app)
+    
     finders = []
     for finder in config['finders']:
         finders.append(load_by_path(finder)(config))
@@ -139,6 +144,7 @@ def configure(app):
     app.session_cookie_name = config['session_cookie_name']
     app.session_interface = raintankSessionInterface()
     app.config['admin_token'] = config['admin_token']
+    
     
     if 'sentry_dsn' in config:
         try:

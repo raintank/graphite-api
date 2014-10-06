@@ -56,7 +56,6 @@ class Graphite(Flask):
         # dictconfig(). Replace it with our structlog logger.
         return logger
 
-
 app = Graphite(__name__)
 try:
     configure(app)
@@ -429,6 +428,10 @@ def render():
                     timestamps = range(series.start, series.end + series.step,
                                        series.step)
                     datapoints = zip(series, timestamps)
+                    # if we are executing a graphiteCheck, then we want to
+                    # know the pathExpression that is being returned without
+                    # all of the functions that wrap it.
+                    #  g.pathExpression is stored by evaluateTokens()
                     if RequestParams.get('graphiteCheck'):
                         series.name = g.pathExpression
                     series_data.append({'target': series.name,
@@ -486,6 +489,7 @@ def evaluateTokens(requestContext, tokens):
         return evaluateTokens(requestContext, tokens.expression)
 
     elif tokens.pathExpression:
+        # keep track of the metric path so that we can reference it later.
         g.pathExpression = tokens.pathExpression
         return fetchData(requestContext, tokens.pathExpression)
 
