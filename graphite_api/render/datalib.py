@@ -22,7 +22,8 @@ logger = get_logger()
 class TimeSeries(list):
     def __init__(self, name, start, end, step, values, consolidate='average'):
         list.__init__(self, values)
-        self.name = name
+        # trim the accountId from the start of the name.
+        self.name = '.'.join(name.split('.')[1:])
         self.start = start
         self.end = end
         self.step = step

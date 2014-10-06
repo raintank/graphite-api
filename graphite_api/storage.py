@@ -6,13 +6,15 @@ from .utils import is_pattern
 from .node import LeafNode
 from .intervals import Interval
 from .readers import MultiReader
-
+from flask import g
 
 class Store(object):
     def __init__(self, finders=None):
         self.finders = finders
 
     def find(self, pattern, startTime=None, endTime=None, local=True):
+        # Raintank hack to prepend account_id to the query pattern.
+        pattern = "%s.%s" % (g.account, pattern)
         query = FindQuery(pattern, startTime, endTime)
 
         matching_nodes = set()
