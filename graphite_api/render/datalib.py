@@ -24,7 +24,7 @@ class TimeSeries(list):
         list.__init__(self, values)
         self.name = name
         # raintank Hack: trim the accountId from the start of the name.
-        if name.startswith(g.account):
+        if name.startswith('%s.' % g.account):
             self.name = '.'.join(name.split('.')[1:])
         self.start = start
         self.end = end

@@ -71,8 +71,6 @@ methods = ('GET', 'POST')
 def authenticate():
     if 'X-Admin-Token' in request.headers and request.headers['x-admin-token'] == app.config['admin_token']:
         g.account = request.headers['x-account-id']
-    elif 'account_id' in session and session['account_id']:
-       g.account = session['account_id']
     else:
        return 'not authenticated', 403
 
