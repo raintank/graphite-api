@@ -160,13 +160,69 @@ container::
 This container has all the :ref:`extra packages <extras>` included. Cyanite
 backend and Sentry integration are available.
 
+Nginx + uWSGI
+-------------
+
+First, you need to install uWSGI with Python support. On Debian, install ``uwsgi-plugin-python``.
+
+Then create the uWSGI file for Graphite-API in
+``/etc/uwsgi/apps-available/graphite-api.ini``:
+
+.. code-block:: ini
+
+    [uwsgi]
+    processes = 2
+    socket = localhost:8080
+    plugins = python27
+    module = graphite_api.app:app
+
+If you installed Graphite-API in a virtualenv, specify the virtualenv path:
+
+.. code-block:: ini
+
+    home = /var/www/wsgi-scripts/env
+
+If you need a custom location for Graphite-API's config file, set the
+environment variable like this:
+
+.. code-block:: ini
+
+    env = GRAPHITE_API_CONFIG=/var/www/wsgi-scripts/config.yml
+
+Enable ``graphite-api.ini`` and restart uWSGI:
+
+.. code-block:: bash
+
+    $ ln -s /etc/uwsgi/apps-available/graphite-api.ini /etc/uwsgi/apps-enabled
+    $ service uwsgi restart
+
+Finally, configure the nginx vhost:
+
+.. code-block:: nginx
+
+    # /etc/nginx/sites-available/graphite.conf
+
+    server {
+        listen 80;
+
+        location / {
+            include uwsgi_params;
+            uwsgi_pass localhost:8080;
+        }
+    }
+
+Enable the vhost and restart nginx:
+
+.. code-block:: bash
+
+    $ ln -s /etc/nginx/sites-available/graphite.conf /etc/nginx/sites-enabled
+    $ service nginx restart
+
 Other deployment methods
 ------------------------
 
 They currently aren't described here but there are several other ways to serve
 Graphite-API:
-
-* nginx + uwsgi
 
 * nginx + circus + chaussette
 

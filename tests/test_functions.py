@@ -91,7 +91,8 @@ class FunctionsTest(TestCase):
     def _generate_series_list(self, config=(
         range(101),
         range(2, 103),
-        [1] * 2 + [None] * 90 + [1] * 2 + [None] * 7
+        [1] * 2 + [None] * 90 + [1] * 2 + [None] * 7,
+        []
     )):
         seriesList = []
 
@@ -106,6 +107,7 @@ class FunctionsTest(TestCase):
 
     def test_remove_above_percentile(self):
         seriesList = self._generate_series_list()
+        seriesList.pop()
         percent = 50
         results = functions.removeAbovePercentile({}, seriesList, percent)
         for result, exc in zip(results, [[], [51, 52]]):
@@ -113,6 +115,7 @@ class FunctionsTest(TestCase):
 
     def test_remove_below_percentile(self):
         seriesList = self._generate_series_list()
+        seriesList.pop()
         percent = 50
         results = functions.removeBelowPercentile({}, seriesList, percent)
         expected = [[], [], [1] * 4]
@@ -316,20 +319,22 @@ class FunctionsTest(TestCase):
 
     def test_sum_series(self):
         series = self._generate_series_list()
-        sum_ = functions.sumSeries({}, series)[0]
+        [sum_] = functions.sumSeries({}, series)
         self.assertEqual(sum_.pathExpression,
                          "sumSeries(collectd.test-db1.load.value,"
                          "collectd.test-db2.load.value,"
-                         "collectd.test-db3.load.value)")
+                         "collectd.test-db3.load.value,"
+                         "collectd.test-db4.load.value)")
         self.assertEqual(sum_[:3], [3, 5, 6])
 
     def test_sum_series_wildcards(self):
         series = self._generate_series_list()
-        sum_ = functions.sumSeriesWithWildcards({}, series, 1)[0]
+        [sum_] = functions.sumSeriesWithWildcards({}, series, 1)
         self.assertEqual(sum_.pathExpression,
+                         "sumSeries(collectd.test-db4.load.value,"
                          "sumSeries(collectd.test-db3.load.value,"
                          "sumSeries(collectd.test-db1.load.value,"
-                         "collectd.test-db2.load.value))")
+                         "collectd.test-db2.load.value)))")
         self.assertEqual(sum_[:3], [3, 5, 6])
 
     def test_diff_series(self):
@@ -1030,3 +1035,38 @@ class FunctionsTest(TestCase):
         }
         walk = functions.randomWalkFunction(ctx, 'foo')[0]
         self.assertEqual(len(walk), 721)
+
+    def test_null_zero_sum(self):
+        s = TimeSeries("s", 0, 1, 1, [None])
+        s.pathExpression = 's'
+        [series] = functions.sumSeries({}, [s])
+        self.assertEqual(list(series), [None])
+
+        s = TimeSeries("s", 0, 1, 1, [None, 1])
+        s.pathExpression = 's'
+        t = TimeSeries("s", 0, 1, 1, [None, None])
+        t.pathExpression = 't'
+        [series] = functions.sumSeries({}, [s, t])
+        self.assertEqual(list(series), [None, 1])
+
+    def test_multiply_with_wildcards(self):
+        s1 = [
+            TimeSeries('web.host-1.avg-response.value', 0, 1, 1, [1, 10, 11]),
+            TimeSeries('web.host-2.avg-response.value', 0, 1, 1, [2, 20, 21]),
+            TimeSeries('web.host-3.avg-response.value', 0, 1, 1, [3, 30, 31]),
+            TimeSeries('web.host-4.avg-response.value', 0, 1, 1, [4, 40, 41]),
+        ]
+        s2 = [
+            TimeSeries('web.host-4.total-request.value', 0, 1, 1, [4, 8, 12]),
+            TimeSeries('web.host-3.total-request.value', 0, 1, 1, [3, 7, 11]),
+            TimeSeries('web.host-1.total-request.value', 0, 1, 1, [1, 5, 9]),
+            TimeSeries('web.host-2.total-request.value', 0, 1, 1, [2, 6, 10]),
+        ]
+        expected = [
+            TimeSeries('web.host-1', 0, 1, 1, [1, 50, 99]),
+            TimeSeries('web.host-2', 0, 1, 1, [4, 120, 210]),
+            TimeSeries('web.host-3', 0, 1, 1, [9, 210, 341]),
+            TimeSeries('web.host-4', 0, 1, 1, [16, 320, 492]),
+        ]
+        results = functions.multiplySeriesWithWildcards({}, s1 + s2, 2, 3)
+        self.assertEqual(results, expected)

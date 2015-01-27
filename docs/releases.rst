@@ -16,7 +16,11 @@ Graphite-API releases
   database-backed finders such as Cyanite because it allows fetching all time
   series at once instead of sequentially.
 
-* Add ``minimumBelow`` and ``changed`` functions.
+* Add ``multiplySeriesWithWildcards``, ``minimumBelow`` and ``changed``
+  functions.
+
+* Add optional ``step`` argument to ``time``, ``sin`` and ``randomWalk``
+  functions.
 
 * Add ``/metrics`` API call as an alias to ``/metrics/find``.
 
@@ -43,6 +47,8 @@ Graphite-API releases
     wildcard series of length 2.
   * `#702 <https://github.com/graphite-project/graphite-web/pull/702>`_ --
     handle backslash as path separator on windows.
+  * `#410 <https://github.com/graphite-project/graphite-web/pull/410>`_ -- SVG
+    output sometimes had an extra ``</g>`` tag.
 
 1.0.1 -- 2014-03-21
 -------------------

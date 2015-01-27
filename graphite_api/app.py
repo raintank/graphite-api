@@ -1,3 +1,4 @@
+import os
 import csv
 import json
 import math
@@ -5,6 +6,7 @@ import pytz
 import shutil
 import six
 import tempfile
+import time
 
 from collections import defaultdict
 from datetime import datetime
@@ -12,6 +14,7 @@ from io import StringIO, BytesIO
 
 from flask import Flask, session, g, request
 from structlog import get_logger
+from werkzeug.http import http_date
 
 from .config import configure
 from .encoders import JSONEncoder
@@ -213,7 +216,13 @@ def metrics_expand():
 @app.route('/metrics/index.json', methods=methods)
 def metrics_index():
     index = set()
-    recurse('*', index)
+    if os.path.exists(app.searcher.index_path):
+        with open(app.searcher.index_path, 'r') as f:
+            index = set([line.strip() for line in f if line])
+        if not index:
+            recurse('*', index)
+    else:
+        recurse('*', index)
     return jsonify(sorted(index), jsonp=RequestParams.get('jsonp', False))
 
 
@@ -356,6 +365,10 @@ def render():
             return response
 
     headers = {
+        'Last-Modified': http_date(time.time()),
+        'Expires': http_date(time.time() + (cache_timeout or 60)),
+        'Cache-Control': 'max-age={0}'.format(cache_timeout or 60)
+    } if use_cache else {
         'Pragma': 'no-cache',
         'Cache-Control': 'no-cache',
     }
