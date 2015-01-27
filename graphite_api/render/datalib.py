@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License."""
 from collections import defaultdict
 from structlog import get_logger
-from flask import g
 from ..utils import epoch
 
 logger = get_logger()
@@ -23,9 +22,6 @@ class TimeSeries(list):
     def __init__(self, name, start, end, step, values, consolidate='average'):
         list.__init__(self, values)
         self.name = name
-        # raintank Hack: trim the accountId from the start of the name.
-        if name.startswith('%s.' % g.account):
-            self.name = '.'.join(name.split('.')[1:])
         self.start = start
         self.end = end
         self.step = step
