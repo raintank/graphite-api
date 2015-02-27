@@ -72,8 +72,8 @@ methods = ('GET', 'POST')
 # ensure the request is authenticated.
 @app.before_request
 def authenticate():
-    if 'x-account-id' in request.headers:
-        g.account = int(request.headers['x-account-id'])
+    if 'x-org-id' in request.headers:
+        g.org = int(request.headers['x-org-id'])
     else:
        return 'not authenticated', 403
 
