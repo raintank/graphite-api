@@ -22,7 +22,7 @@ find build -iname *.pyo -exec rm {} \;
 cp -a conf/etc build
 
 sudo fpm \
-	-t deb -s dir -C build -n graphite-api -v $VERSION \
+	-t deb -s dir -C build -n graphite-api-rt -v $VERSION \
 	--iteration `date +%s` \
 	--deb-default conf/etc/default/graphite-api \
 	--deb-init conf/etc/init.d/graphite-api \
@@ -34,7 +34,7 @@ sudo fpm \
 	--after-install conf/post-install \
 	--before-remove conf/pre-remove \
 	--after-remove conf/post-remove \
-	--url https://github.com/brutasse/graphite-api \
-	--description 'Graphite-web, without the interface. Just the rendering HTTP API.' \
+	--url https://github.com/raintank/graphite-api \
+	--description 'Graphite-web, without the interface. Just the rendering HTTP API. (raintank fork)' \
 	--license 'Apache 2.0' \
 	.
