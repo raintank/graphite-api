@@ -9,6 +9,7 @@ build/usr/share/python/graphite/bin/pip install -U pip distribute
 build/usr/share/python/graphite/bin/pip uninstall -y distribute
 
 build/usr/share/python/graphite/bin/pip install graphite-api[sentry,cyanite] gunicorn==18.0
+build/usr/share/python/graphite/bin/pip install git+https://github.com/raintank/graphite-kairosdb.git
 
 find build ! -perm -a+r -exec chmod a+r {} \;
 
