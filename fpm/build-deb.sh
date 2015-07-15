@@ -14,6 +14,8 @@ build/usr/share/python/graphite/bin/pip install git+https://github.com/raintank/
 build/usr/share/python/graphite/bin/pip install eventlet
 build/usr/share/python/graphite/bin/pip install statsd
 build/usr/share/python/graphite/bin/pip install Flask-Cache
+build/usr/share/python/graphite/bin/pip install cassandra-driver
+build/usr/share/python/graphite/bin/pip install blist
 
 find build ! -perm -a+r -exec chmod a+r {} \;
 
