@@ -3,12 +3,14 @@ set -xe
 
 export VERSION=1.0.1
 
+branch=`git rev-parse --abbrev-ref HEAD`
+
 mkdir -p build/usr/share/python
 virtualenv build/usr/share/python/graphite
 build/usr/share/python/graphite/bin/pip install -U pip distribute
 build/usr/share/python/graphite/bin/pip uninstall -y distribute
 
-build/usr/share/python/graphite/bin/pip install git+https://github.com/raintank/graphite-api.git
+build/usr/share/python/graphite/bin/pip install git+https://github.com/raintank/graphite-api.git@$branch
 build/usr/share/python/graphite/bin/pip install graphite-api[sentry,cyanite] gunicorn==18.0
 build/usr/share/python/graphite/bin/pip install git+https://github.com/raintank/graphite-kairosdb.git
 build/usr/share/python/graphite/bin/pip install eventlet
