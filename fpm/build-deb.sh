@@ -24,7 +24,7 @@ build/usr/share/python/graphite/bin/pip install git+https://github.com/raintank/
 build/usr/share/python/graphite/bin/pip install graphite-api[sentry,cyanite] gunicorn==18.0
 build/usr/share/python/graphite/bin/pip install git+https://github.com/raintank/graphite-kairosdb.git@$graphite_kairoadb_branch
 build/usr/share/python/graphite/bin/pip install eventlet
-build/usr/share/python/graphite/bin/pip install statsd
+build/usr/share/python/graphite/bin/pip install git+https://github.com/woodsaj/pystatsd.git
 build/usr/share/python/graphite/bin/pip install Flask-Cache
 build/usr/share/python/graphite/bin/pip install cassandra-driver
 build/usr/share/python/graphite/bin/pip install blist
