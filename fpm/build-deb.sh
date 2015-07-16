@@ -3,16 +3,26 @@ set -xe
 
 export VERSION=1.0.1
 
-branch=`git rev-parse --abbrev-ref HEAD`
+graphite_api_branch="master"
+graphite_kairoadb_branch="master"
+OPTIND=1
+while getopts "a:k:" opt; do
+    case "$opt" in
+    a) graphite_api_branch=$OPTARG
+       ;;
+    k) graphite_kairoadb_branch=$OPTARG
+       ;;
+    esac
+done
 
 mkdir -p build/usr/share/python
 virtualenv build/usr/share/python/graphite
 build/usr/share/python/graphite/bin/pip install -U pip distribute
 build/usr/share/python/graphite/bin/pip uninstall -y distribute
 
-build/usr/share/python/graphite/bin/pip install git+https://github.com/raintank/graphite-api.git@$branch
+build/usr/share/python/graphite/bin/pip install git+https://github.com/raintank/graphite-api.git@$graphite_api_branch
 build/usr/share/python/graphite/bin/pip install graphite-api[sentry,cyanite] gunicorn==18.0
-build/usr/share/python/graphite/bin/pip install git+https://github.com/raintank/graphite-kairosdb.git
+build/usr/share/python/graphite/bin/pip install git+https://github.com/raintank/graphite-kairosdb.git@$graphite_kairoadb_branch
 build/usr/share/python/graphite/bin/pip install eventlet
 build/usr/share/python/graphite/bin/pip install statsd
 build/usr/share/python/graphite/bin/pip install Flask-Cache
