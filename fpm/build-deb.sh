@@ -15,7 +15,9 @@ while getopts "a:k:" opt; do
     esac
 done
 
-rm -r build/
+if [ -d build ]; then
+	rm -r build/
+fi
 mkdir -p build/usr/share/python
 virtualenv build/usr/share/python/graphite
 build/usr/share/python/graphite/bin/pip install -U pip distribute
