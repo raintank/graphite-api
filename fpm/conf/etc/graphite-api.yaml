@@ -8,3 +8,20 @@ whisper:
   directories:
     - /srv/graphite/whisper
 time_zone: UTC
+logging:
+  version: 1
+  handlers:
+    raw:
+      level: DEBUG
+      class: logging.StreamHandler
+      formatter: raw
+  loggers:
+    root:
+      handlers:
+        - raw
+      level: DEBUG
+      propagate: false
+    graphite_api:
+      handlers:
+        - raw
+      level: DEBUG
