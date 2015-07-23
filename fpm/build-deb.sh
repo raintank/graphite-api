@@ -5,12 +5,16 @@ export VERSION=1.0.1
 
 graphite_api_branch="master"
 graphite_kairoadb_branch="master"
+package_destination="./"
+
 OPTIND=1
-while getopts "a:k:" opt; do
+while getopts "a:k:p:" opt; do
     case "$opt" in
     a) graphite_api_branch=$OPTARG
        ;;
     k) graphite_kairoadb_branch=$OPTARG
+       ;;
+    p) package_destination=$OPTARG
        ;;
     esac
 done
@@ -18,7 +22,9 @@ done
 if [ -d build ]; then
 	rm -r build/
 fi
+
 mkdir -p build/usr/share/python
+
 virtualenv build/usr/share/python/graphite
 build/usr/share/python/graphite/bin/pip install -U pip distribute
 build/usr/share/python/graphite/bin/pip uninstall -y distribute
@@ -59,4 +65,4 @@ sudo fpm \
 	--url https://github.com/raintank/graphite-api \
 	--description 'Graphite-web, without the interface. Just the rendering HTTP API. (raintank fork)' \
 	--license 'Apache 2.0' \
-	.
+  ${package_destination}
