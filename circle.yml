@@ -6,7 +6,6 @@ dependencies:
     - gem install fpm
     - gem install package_cloud
     - mkdir artifacts
-    - sudo apt-get install python-dev libffi-dev python-virtualenv
     - pip install virtualenv-tools
 general:
   artifacts:
