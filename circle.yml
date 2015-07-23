@@ -1,6 +1,6 @@
 machine:
   environment:
-    TOXENV: py26
+    TOXENV: py27
 dependencies:
   pre:
     - gem install fpm
