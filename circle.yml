@@ -16,5 +16,4 @@ test:
   post:
     - ./build-deb.sh:
       pwd: fpm
-    - cp fpm/*.deb artifacts/
 
