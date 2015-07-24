@@ -14,5 +14,5 @@ test:
   override:
     - echo "Testing disabled"
   post:
-    - conf/build-deb.sh -p /home/ubuntu/graphite-api/artifacts/
+    - fpm/build-deb.sh -p /home/ubuntu/graphite-api/artifacts/
 
