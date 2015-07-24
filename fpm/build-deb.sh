@@ -3,6 +3,8 @@ set -xe
 
 export VERSION=1.0.1
 
+cd $(dirname $0)
+
 graphite_api_branch="master"
 graphite_kairoadb_branch="master"
 package_destination="./"
