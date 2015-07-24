@@ -11,7 +11,7 @@ package_destination="./"
 
 OPTIND=1
 while getopts "a:k:p:" opt; do
-    case "$opt" in
+    case $opt in
     a) graphite_api_branch=$OPTARG
        ;;
     k) graphite_kairoadb_branch=$OPTARG
