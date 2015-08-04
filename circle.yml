@@ -16,6 +16,7 @@ test:
   post:
     - fpm/build-deb.sh -p /home/ubuntu/graphite-api/artifacts/
 deployment:
-  branch: circleci
-  commands:
-    - package_cloud push raintank/raintank-unstable/ubuntu/trusty artifacts/*.deb
+  production:
+    branch: circleci
+    commands:
+      - package_cloud push raintank/raintank-unstable/ubuntu/trusty artifacts/*.deb
