@@ -14,9 +14,9 @@ test:
   override:
     - echo "Testing disabled"
   post:
-    - fpm/build-deb.sh -p /home/ubuntu/graphite-api/artifacts/
+    - fpm/build-deb.sh 
 deployment:
   production:
     branch: circleci
     commands:
-      - package_cloud push raintank/raintank-unstable/ubuntu/trusty artifacts/*.deb
+      - package_cloud push raintank/raintank-unstable/ubuntu/trusty fpm/*.deb
