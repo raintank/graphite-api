@@ -1,6 +1,3 @@
-machine:
-  environment:
-    TOXENV: py27
 dependencies:
   override:
     - pkg/depends.sh
