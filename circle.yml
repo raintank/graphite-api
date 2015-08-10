@@ -2,21 +2,19 @@ machine:
   environment:
     TOXENV: py27
 dependencies:
-  pre:
-    - gem install fpm
-    - gem install package_cloud
-    - mkdir artifacts
-    - pip install virtualenv-tools
+  override:
+    - pkg/depends.sh
+    - pkg/build.sh
 general:
   artifacts:
-    - artifacts
+    - pkg/artifacts
 test:
   override:
     - echo "Testing disabled"
   post:
-    - fpm/build-deb.sh 
+    - pkg/package.sh
 deployment:
   production:
     branch: circleci
     commands:
-      - package_cloud push raintank/raintank-unstable/ubuntu/trusty fpm/*.deb
+      - pkg/deploy.sh
