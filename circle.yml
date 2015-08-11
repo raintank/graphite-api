@@ -12,6 +12,6 @@ test:
     - pkg/package.sh
 deployment:
   production:
-    branch: circleci
+    branch: master
     commands:
       - pkg/deploy.sh
