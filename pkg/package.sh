@@ -13,7 +13,6 @@ ITERATION=`date +%s`
 TAG="pkg-${VERSION}-${ITERATION}"
 
 git tag $TAG
-git push --tags
 
 fpm \
   -t deb -s dir -C ${BUILD_DIR} -n ${NAME} -v $VERSION \
