@@ -6,7 +6,7 @@ class Node(object):
         self.name = path.split('.')[-1]
         self.local = True
         self.is_leaf = False
-        self.consolidateBy = 'avg'
+        self.consolidateBy = None
 
     def __repr__(self):
         return '<%s[%x]: %s>' % (self.__class__.__name__, id(self), self.path)
