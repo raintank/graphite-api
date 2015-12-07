@@ -379,6 +379,7 @@ def render():
         'startTime': request_options['startTime'],
         'endTime': request_options['endTime'],
         'data': [],
+        'consolidateBy': 'avg',
     }
 
     if request_options['graphType'] == 'pie':
@@ -508,6 +509,8 @@ def evaluateTokens(requestContext, tokens):
 
     elif tokens.call:
         func = app.functions[tokens.call.funcname]
+        if tokens.call.funcname == "consolidateBy":
+            requestContext['consolidateBy'] = tokens.call.args[1]
         args = [evaluateTokens(requestContext,
                                arg) for arg in tokens.call.args]
         kwargs = dict([(kwarg.argname,

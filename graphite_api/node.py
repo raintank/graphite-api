@@ -1,11 +1,12 @@
 class Node(object):
-    __slots__ = ('name', 'path', 'local', 'is_leaf')
+    __slots__ = ('name', 'path', 'local', 'is_leaf', 'consolidateBy')
 
     def __init__(self, path):
         self.path = path
         self.name = path.split('.')[-1]
         self.local = True
         self.is_leaf = False
+        self.consolidateBy = 'avg'
 
     def __repr__(self):
         return '<%s[%x]: %s>' % (self.__class__.__name__, id(self), self.path)
