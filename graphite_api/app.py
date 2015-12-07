@@ -308,7 +308,7 @@ def render():
             mdp = int(
                 float(RequestParams['maxDataPoints']))
             request_options['maxDataPoints'] = mdp
-            g.mdp = mdp
+            g.maxDataPoints = mdp
         except ValueError:
             errors['maxDataPoints'] = 'Must be an integer.'
 
