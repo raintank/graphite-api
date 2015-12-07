@@ -305,8 +305,10 @@ def render():
             request_options['jsonp'] = RequestParams['jsonp']
     if 'maxDataPoints' in RequestParams:
         try:
-            request_options['maxDataPoints'] = int(
+            mdp = int(
                 float(RequestParams['maxDataPoints']))
+            request_options['maxDataPoints'] = mdp
+            g.maxDataPoints = mdp
         except ValueError:
             errors['maxDataPoints'] = 'Must be an integer.'
 
