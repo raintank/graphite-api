@@ -94,6 +94,8 @@ def fetchData(requestContext, pathExpr):
         for node in matching_nodes:
             if not node.is_leaf:
                 continue
+            node.consolidateBy = requestContext['consolidateBy']
+            print "%s has consolidationBy: %s" % (node.path, node.consolidateBy)
             if hasattr(node, '__fetch_multi__'):
                 multi_nodes[node.__fetch_multi__].append(node)
             else:
