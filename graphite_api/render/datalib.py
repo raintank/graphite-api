@@ -86,7 +86,7 @@ def fetchData(requestContext, pathExpr):
     endTime = int(epoch(requestContext['endTime']))
 
     def _fetchData(pathExpr, startTime, endTime, requestContext, seriesList):
-        matching_nodes = app.store.find(pathExpr, startTime, endTime)
+        matching_nodes = app.store.find(pathExpr, startTime, endTime, leaves_only=True)
 
         # Group nodes that support multiple fetches
         multi_nodes = defaultdict(list)

@@ -11,8 +11,8 @@ class Store(object):
     def __init__(self, finders=None):
         self.finders = finders
 
-    def find(self, pattern, startTime=None, endTime=None, local=True):
-        query = FindQuery(pattern, startTime, endTime)
+    def find(self, pattern, startTime=None, endTime=None, local=True, leaves_only=False):
+        query = FindQuery(pattern, startTime, endTime, leaves_only)
 
         matching_nodes = set()
 
@@ -53,11 +53,12 @@ class Store(object):
 
 
 class FindQuery(object):
-    def __init__(self, pattern, startTime, endTime):
+    def __init__(self, pattern, startTime, endTime, leaves_only):
         self.pattern = pattern
         self.startTime = startTime
         self.endTime = endTime
         self.isExact = is_pattern(pattern)
+        self.leaves_only = leaves_only
         self.interval = Interval(
             float('-inf') if startTime is None else startTime,
             float('inf') if endTime is None else endTime)

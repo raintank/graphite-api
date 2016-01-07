@@ -197,7 +197,7 @@ def metrics_expand():
 
     results = defaultdict(set)
     for query in RequestParams.getlist('query'):
-        for node in app.store.find(query):
+        for node in app.store.find(query, leaves_only=leaves_only):
             if node.is_leaf or not leaves_only:
                 results[query].add(node.path)
 
