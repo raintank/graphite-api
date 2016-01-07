@@ -23,12 +23,13 @@ import math
 import re
 import random
 import six
+import time
 
 from six.moves import zip_longest, map, reduce
 
-from .render.attime import parseTimeOffset
+from .render.attime import parseTimeOffset, parseATTime
 from .render.glyph import format_units
-from .render.datalib import TimeSeries
+from .render.datalib import TimeSeries, fetchData
 from .utils import to_seconds, epoch
 
 NAN = float('NaN')
@@ -40,6 +41,13 @@ DAY = HOUR * 24
 
 # Utility functions
 not_none = partial(filter, partial(is_not, None))
+
+
+def not_empty(values):
+    for v in values:
+        if v is not None:
+            return True
+    return False
 
 
 def safe(f):
@@ -178,7 +186,7 @@ def sumSeries(requestContext, *seriesLists):
     rates.
 
     """
-    if not seriesLists or seriesLists == ([],):
+    if not seriesLists or not any(seriesLists):
         return []
     seriesList, start, end, step = normalize(seriesLists)
     name = "sumSeries(%s)" % formatPathExpressions(seriesList)
@@ -305,7 +313,7 @@ def diffSeries(requestContext, *seriesLists):
         &target=offset(diffSeries(service.connections.total,
                                   service.connections.failed), -4)
     """
-    if not seriesLists or seriesLists == ([],):
+    if not seriesLists or not any(seriesLists):
         return []
     seriesList, start, end, step = normalize(seriesLists)
     name = "diffSeries(%s)" % formatPathExpressions(seriesList)
@@ -327,7 +335,7 @@ def averageSeries(requestContext, *seriesLists):
         &target=averageSeries(company.server.*.threads.busy)
 
     """
-    if not seriesLists or seriesLists == ([],):
+    if not seriesLists or not any(seriesLists):
         return []
     seriesList, start, end, step = normalize(seriesLists)
     name = "averageSeries(%s)" % formatPathExpressions(seriesList)
@@ -349,7 +357,7 @@ def stddevSeries(requestContext, *seriesLists):
         &target=stddevSeries(company.server.*.threads.busy)
 
     """
-    if not seriesLists or seriesLists == ([],):
+    if not seriesLists or not any(seriesLists):
         return []
     seriesList, start, end, step = normalize(seriesLists)
     name = "stddevSeries(%s)" % formatPathExpressions(seriesList)
@@ -369,7 +377,7 @@ def minSeries(requestContext, *seriesLists):
 
         &target=minSeries(Server*.connections.total)
     """
-    if not seriesLists or seriesLists == ([],):
+    if not seriesLists or not any(seriesLists):
         return []
     seriesList, start, end, step = normalize(seriesLists)
     name = "minSeries(%s)" % formatPathExpressions(seriesList)
@@ -389,7 +397,7 @@ def maxSeries(requestContext, *seriesLists):
         &target=maxSeries(Server*.connections.total)
 
     """
-    if not seriesLists or seriesLists == ([],):
+    if not seriesLists or not any(seriesLists):
         return []
     seriesList, start, end, step = normalize(seriesLists)
     name = "maxSeries(%s)" % formatPathExpressions(seriesList)
@@ -409,7 +417,7 @@ def rangeOfSeries(requestContext, *seriesLists):
         &target=rangeOfSeries(Server*.connections.total)
 
     """
-    if not seriesLists or seriesLists == ([],):
+    if not seriesLists or not any(seriesLists):
         return []
     seriesList, start, end, step = normalize(seriesLists)
     name = "rangeOfSeries(%s)" % formatPathExpressions(seriesList)
@@ -615,7 +623,7 @@ def multiplySeries(requestContext, *seriesLists):
 
     """
 
-    if not seriesLists or seriesLists == ([],):
+    if not seriesLists or not any(seriesLists):
         return []
     seriesList, start, end, step = normalize(seriesLists)
 
@@ -1269,7 +1277,7 @@ def alias(requestContext, seriesList, newName):
 def cactiStyle(requestContext, seriesList, system=None):
     """
     Takes a series list and modifies the aliases to provide column aligned
-    output with Current, Max, and Min values in the style of cacti. Optonally
+    output with Current, Max, and Min values in the style of cacti. Optionally
     takes a "system" value to apply unit formatting in the same style as the
     Y-axis.
     NOTE: column alignment only works with monospace fonts such as terminus.
@@ -1279,10 +1287,11 @@ def cactiStyle(requestContext, seriesList, system=None):
         &target=cactiStyle(ganglia.*.net.bytes_out,"si")
 
     """
-    if system:
-        fmt = lambda x: "%.2f%s" % format_units(x, system=system)
-    else:
-        fmt = lambda x: "%.2f" % x
+    def fmt(x):
+        if system:
+            return "%.2f%s" % format_units(x, system=system)
+        else:
+            return "%.2f" % x
     nameLen = max([0] + [len(series.name) for series in seriesList])
     lastLen = max([0] + [len(fmt(int(safeLast(series) or 3)))
                          for series in seriesList]) + 3
@@ -1379,8 +1388,7 @@ def legendValue(requestContext, seriesList, *valueTypes):
                 value = valueFunc(series)
                 formatted = None
                 if value is not None:
-                    formatted = "%.2f%s" % format_units(abs(value),
-                                                        system=system)
+                    formatted = "%.2f%s" % format_units(value, system=system)
                 series.name = "%-20s%-5s%-10s" % (series.name, valueType,
                                                   formatted)
     return seriesList
@@ -1777,7 +1785,10 @@ def removeAbovePercentile(requestContext, seriesList, n):
     for s in seriesList:
         s.name = 'removeAbovePercentile(%s, %d)' % (s.name, n)
         s.pathExpression = s.name
-        percentile = nPercentile(requestContext, [s], n)[0][0]
+        try:
+            percentile = nPercentile(requestContext, [s], n)[0][0]
+        except IndexError:
+            continue
         for index, val in enumerate(s):
             if val is None:
                 continue
@@ -1812,7 +1823,10 @@ def removeBelowPercentile(requestContext, seriesList, n):
     for s in seriesList:
         s.name = 'removeBelowPercentile(%s, %d)' % (s.name, n)
         s.pathExpression = s.name
-        percentile = nPercentile(requestContext, [s], n)[0][0]
+        try:
+            percentile = nPercentile(requestContext, [s], n)[0][0]
+        except IndexError:
+            continue
         for (index, val) in enumerate(s):
             if val is None:
                 continue
@@ -1920,13 +1934,15 @@ def useSeriesAbove(requestContext, seriesList, value, search, replace):
 
         &target=useSeriesAbove(ganglia.metric1.reqs,10,"reqs","time")
     """
-    from .app import evaluateTarget
+    from .app import evaluateTarget, pathsFromTarget
     newSeries = []
 
     for series in seriesList:
         newname = re.sub(search, replace, series.name)
         if safeMax(series) > value:
-            n = evaluateTarget(requestContext, newname)
+            paths = pathsFromTarget(newname)
+            data_store = fetchData(requestContext, paths)
+            n = evaluateTarget(requestContext, newname, data_store)
             if n is not None and len(n) > 0:
                 newSeries.append(n[0])
 
@@ -2022,8 +2038,8 @@ def stdev(requestContext, seriesList, points, windowTolerance=0.1):
                 float(validPoints) / points >= windowTolerance
             ):
 
-                deviation = math.sqrt(validPoints * currentSumOfSquares
-                                      - currentSum**2) / validPoints
+                deviation = math.sqrt(validPoints * currentSumOfSquares -
+                                      currentSum**2) / validPoints
                 stddevSeries.append(deviation)
             else:
                 stddevSeries.append(None)
@@ -2047,20 +2063,44 @@ def _fetchWithBootstrap(requestContext, seriesList, **delta_kwargs):
     """
     Request the same data but with a bootstrap period at the beginning.
     """
-    from .app import evaluateTarget
+    from .app import evaluateTarget, pathsFromTarget
     bootstrapContext = requestContext.copy()
     bootstrapContext['startTime'] = (
         requestContext['startTime'] - timedelta(**delta_kwargs))
     bootstrapContext['endTime'] = requestContext['startTime']
 
     bootstrapList = []
+
+    # Get all paths to fetch
+    paths = []
+    for series in seriesList:
+        if series.pathExpression in [b.pathExpression for b in bootstrapList]:
+            continue
+        paths.extend(pathsFromTarget(series.pathExpression))
+
+    # Fetch all paths
+    data_store = fetchData(bootstrapContext, paths)
+
     for series in seriesList:
         if series.pathExpression in [b.pathExpression for b in bootstrapList]:
             # This pathExpression returns multiple series and we already
             # fetched it
             continue
-        bootstraps = evaluateTarget(bootstrapContext, series.pathExpression)
-        bootstrapList.extend(bootstraps)
+        bootstraps = evaluateTarget(bootstrapContext,
+                                    series.pathExpression,
+                                    data_store)
+        found = dict(((s.name, s) for s in bootstraps))
+        for s in seriesList:
+            if s.name not in found:
+                # bootstrap interval too large for the range available in
+                # storage. Fill with nulls.
+                start = epoch(bootstrapContext['startTime'])
+                end = epoch(bootstrapContext['endTime'])
+                delta = (end - start) % s.step
+                values = [None] * delta
+                found[s.name] = TimeSeries(s.name, start, end, s.step, values)
+                found[s.name].pathExpression = s.pathExpression
+            bootstrapList.append(found[s.name])
 
     newSeriesList = []
     for bootstrap, original in zip_longest(bootstrapList, seriesList):
@@ -2099,8 +2139,8 @@ def _trimBootstrap(bootstrap, original):
 
 def holtWintersIntercept(alpha, actual, last_season, last_intercept,
                          last_slope):
-    return (alpha * (actual - last_season)
-            + (1 - alpha) * (last_intercept + last_slope))
+    return (alpha * (actual - last_season) +
+            (1 - alpha) * (last_intercept + last_slope))
 
 
 def holtWintersSlope(beta, intercept, last_intercept, last_slope):
@@ -2114,8 +2154,8 @@ def holtWintersSeasonal(gamma, actual, intercept, last_season):
 def holtWintersDeviation(gamma, actual, prediction, last_seasonal_dev):
     if prediction is None:
         prediction = 0
-    return (gamma * math.fabs(actual - prediction)
-            + (1 - gamma) * last_seasonal_dev)
+    return (gamma * math.fabs(actual - prediction) +
+            (1 - gamma) * last_seasonal_dev)
 
 
 def holtWintersAnalysis(series):
@@ -2376,15 +2416,15 @@ def timeStack(requestContext, seriesList, timeShiftUnit, timeShiftStart,
     with time shifts starting time shifts from the start multiplier through
     the end multiplier.
 
-    Useful for looking at history, or feeding into seriesAverage or
-    seriesStdDev.
+    Useful for looking at history, or feeding into averageSeries or
+    stddevSeries.
 
     Example::
 
         # create a series for today and each of the previous 7 days
         &target=timeStack(Sales.widgets.largeBlue,"1d",0,7)
     """
-    from .app import evaluateTarget
+    from .app import evaluateTarget, pathsFromTarget
     # Default to negative. parseTimeOffset defaults to +
     if timeShiftUnit[0].isdigit():
         timeShiftUnit = '-' + timeShiftUnit
@@ -2401,7 +2441,10 @@ def timeStack(requestContext, seriesList, timeShiftUnit, timeShiftStart,
         innerDelta = delta * shft
         myContext['startTime'] = requestContext['startTime'] + innerDelta
         myContext['endTime'] = requestContext['endTime'] + innerDelta
-        for shiftedSeries in evaluateTarget(myContext, series.pathExpression):
+        paths = pathsFromTarget(series.pathExpression)
+        for shiftedSeries in evaluateTarget(myContext,
+                                            series.pathExpression,
+                                            fetchData(myContext, paths)):
             shiftedSeries.name = 'timeShift(%s, %s, %s)' % (shiftedSeries.name,
                                                             timeShiftUnit,
                                                             shft)
@@ -2439,7 +2482,7 @@ def timeShift(requestContext, seriesList, timeShift, resetEnd=True):
         &target=timeShift(Sales.widgets.largeBlue,"+1h")
 
     """
-    from .app import evaluateTarget
+    from .app import evaluateTarget, pathsFromTarget
     # Default to negative. parseTimeOffset defaults to +
     if timeShift[0].isdigit():
         timeShift = '-' + timeShift
@@ -2455,7 +2498,10 @@ def timeShift(requestContext, seriesList, timeShift, resetEnd=True):
     # which is all we care about.
     series = seriesList[0]
 
-    for shiftedSeries in evaluateTarget(myContext, series.pathExpression):
+    paths = pathsFromTarget(series.pathExpression)
+    for shiftedSeries in evaluateTarget(myContext,
+                                        series.pathExpression,
+                                        fetchData(myContext, paths)):
         shiftedSeries.name = 'timeShift(%s, %s)' % (shiftedSeries.name,
                                                     timeShift)
         if resetEnd:
@@ -2466,6 +2512,38 @@ def timeShift(requestContext, seriesList, timeShift, resetEnd=True):
         shiftedSeries.start = series.start
         results.append(shiftedSeries)
 
+    return results
+
+
+def timeSlice(requestContext, seriesList, startSliceAt, endSliceAt='now'):
+    """
+    Takes one metric or a wildcard metric, followed by a quoted
+    string with the time to start the line and another quoted string
+    with the time to end the line. The start and end times are
+    inclusive. See ``from / until`` in the render api for examples of
+    time formats.
+
+    Useful for filtering out a part of a series of data from a wider
+    range of data.
+
+    Example::
+
+        &target=timeSlice(network.core.port1,"00:00 20140101","11:59 20140630")
+        &target=timeSlice(network.core.port1,"12:00 20140630","now")
+    """
+    results = []
+    start = time.mktime(parseATTime(startSliceAt).timetuple())
+    end = time.mktime(parseATTime(endSliceAt).timetuple())
+
+    for slicedSeries in seriesList:
+        slicedSeries.name = 'timeSlice(%s, %s, %s)' % (slicedSeries.name,
+                                                       int(start), int(end))
+        curr = time.mktime(requestContext["startTime"].timetuple())
+        for i, v in enumerate(slicedSeries):
+            if v is None or curr < start or curr > end:
+                slicedSeries[i] = None
+            curr += slicedSeries.step
+        results.append(slicedSeries)
     return results
 
 
@@ -2639,7 +2717,7 @@ def countSeries(requestContext, *seriesLists):
         &target=countSeries(carbon.agents.*.*)
 
     """
-    if not seriesLists or seriesLists == ([],):
+    if not seriesLists or not any(seriesLists):
         return []
     seriesList, start, end, step = normalize(seriesLists)
     name = "countSeries(%s)" % formatPathExpressions(seriesList)
@@ -2747,7 +2825,6 @@ def reduceSeries(requestContext, seriesLists, reduceFunction, reduceNode,
 
     .. seealso:: :py:func:`mapSeries`
     """
-    from .app import app
     metaSeries = {}
     keys = []
     for seriesList in seriesLists:
@@ -2834,26 +2911,36 @@ def smartSummarize(requestContext, seriesList, intervalString, func='sum'):
     """
     Smarter experimental version of summarize.
     """
-    from .app import evaluateTarget
+    from .app import evaluateTarget, pathsFromTarget
     results = []
     delta = parseTimeOffset(intervalString)
     interval = to_seconds(delta)
 
     # Adjust the start time to fit an entire day for intervals >= 1 day
     requestContext = requestContext.copy()
+    tzinfo = requestContext['tzinfo']
     s = requestContext['startTime']
     if interval >= DAY:
-        requestContext['startTime'] = datetime(s.year, s.month, s.day)
+        requestContext['startTime'] = datetime(s.year, s.month, s.day,
+                                               tzinfo=tzinfo)
     elif interval >= HOUR:
-        requestContext['startTime'] = datetime(s.year, s.month, s.day, s.hour)
+        requestContext['startTime'] = datetime(s.year, s.month, s.day, s.hour,
+                                               tzinfo=tzinfo)
     elif interval >= MINUTE:
         requestContext['startTime'] = datetime(s.year, s.month, s.day, s.hour,
-                                               s.minute)
+                                               s.minute, tzinfo=tzinfo)
+
+    paths = []
+    for series in seriesList:
+        paths.extend(pathsFromTarget(series.pathExpression))
+    data_store = fetchData(requestContext, paths)
 
     for i, series in enumerate(seriesList):
         # XXX: breaks with summarize(metric.{a,b})
         #            each series.pathExpression == metric.{a,b}
-        newSeries = evaluateTarget(requestContext, series.pathExpression)[0]
+        newSeries = evaluateTarget(requestContext,
+                                   series.pathExpression,
+                                   data_store)[0]
         series[0:len(series)] = newSeries
         series.start = newSeries.start
         series.end = newSeries.end
@@ -2868,6 +2955,10 @@ def smartSummarize(requestContext, seriesList, intervalString, func='sum'):
 
         # Populate buckets
         for timestamp, value in datapoints:
+            # ISSUE: Sometimes there is a missing timestamp in datapoints when
+            #        running a smartSummary
+            if not timestamp:
+                continue
             bucketInterval = int((timestamp - series.start) / interval)
 
             if bucketInterval not in buckets:
@@ -2923,9 +3014,9 @@ def summarize(requestContext, seriesList, intervalString, func='sum',
 
     'max', 'min' or 'last' can also be specified.
 
-    By default, buckets are caculated by rounding to the nearest interval. This
-    works well for intervals smaller than a day. For example, 22:32 will end up
-    in the bucket 22:00-23:00 when the interval=1hour.
+    By default, buckets are calculated by rounding to the nearest interval.
+    This works well for intervals smaller than a day. For example, 22:32 will
+    end up in the bucket 22:00-23:00 when the interval=1hour.
 
     Passing alignToFrom=true will instead create buckets starting at the from
     time. In this case, the bucket for 22:32 depends on the from time. If
@@ -2955,11 +3046,13 @@ def summarize(requestContext, seriesList, intervalString, func='sum',
     for series in seriesList:
         buckets = {}
 
-        timestamps = range(int(series.start), int(series.end),
+        timestamps = range(int(series.start), int(series.end) + 1,
                            int(series.step))
         datapoints = zip_longest(timestamps, series)
 
         for timestamp, value in datapoints:
+            if timestamp is None:
+                continue
             if alignToFrom:
                 bucketInterval = int((timestamp - series.start) / interval)
             else:
@@ -3027,7 +3120,7 @@ def hitcount(requestContext, seriesList, intervalString,
     or coarse-grained records) and handles rarely-occurring events
     gracefully.
     """
-    from .app import evaluateTarget
+    from .app import evaluateTarget, pathsFromTarget
     results = []
     delta = parseTimeOffset(intervalString)
     interval = to_seconds(delta)
@@ -3044,9 +3137,16 @@ def hitcount(requestContext, seriesList, intervalString,
             requestContext['startTime'] = datetime(s.year, s.month, s.day,
                                                    s.hour, s.minute)
 
+        # Gather all paths first, then the data
+        paths = []
+        for series in seriesList:
+            paths.extend(pathsFromTarget(series.pathExpression))
+        data_store = fetchData(requestContext, paths)
+
         for i, series in enumerate(seriesList):
             newSeries = evaluateTarget(requestContext,
-                                       series.pathExpression)[0]
+                                       series.pathExpression,
+                                       data_store)[0]
             intervalCount = int((series.end - series.start) / interval)
             series[0:len(series)] = newSeries
             series.start = newSeries.start
@@ -3138,6 +3238,20 @@ def sinFunction(requestContext, name, amplitude=1, step=60):
     return [series]
 
 
+def removeEmptySeries(requestContext, seriesList):
+    """
+    Takes one metric or a wildcard seriesList. Out of all metrics
+    passed, draws only the metrics with not empty data.
+
+    Example::
+
+        &target=removeEmptySeries(server*.instance*.threads.busy)
+
+    Draws only live servers with not empty data.
+    """
+    return [series for series in seriesList if not_empty(series)]
+
+
 def randomWalkFunction(requestContext, name, step=60):
     """
     Short Alias: randomWalk()
@@ -3215,11 +3329,11 @@ SeriesFunctions = {
     'derivative': derivative,
     'perSecond': perSecond,
     'integral': integral,
-    'percentileOfSeries': percentileOfSeries,
     'nonNegativeDerivative': nonNegativeDerivative,
     'log': logarithm,
     'timeStack': timeStack,
     'timeShift': timeShift,
+    'timeSlice': timeSlice,
     'summarize': summarize,
     'smartSummarize': smartSummarize,
     'hitcount': hitcount,
@@ -3263,6 +3377,7 @@ SeriesFunctions = {
     'useSeriesAbove': useSeriesAbove,
     'exclude': exclude,
     'grep': grep,
+    'removeEmptySeries': removeEmptySeries,
 
     # Data Filter functions
     'removeAbovePercentile': removeAbovePercentile,
@@ -3290,7 +3405,9 @@ SeriesFunctions = {
     'substr': substr,
     'group': group,
     'map': mapSeries,
+    'mapSeries': mapSeries,
     'reduce': reduceSeries,
+    'reduceSeries': reduceSeries,
     'groupByNode': groupByNode,
     'constantLine': constantLine,
     'stacked': stacked,
@@ -3309,3 +3426,5 @@ SeriesFunctions = {
     "sinFunction": sinFunction,
     "randomWalkFunction": randomWalkFunction,
 }
+
+from .app import app

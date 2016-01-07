@@ -1,7 +1,14 @@
 import copy
 import time
 
-from mock import patch, call, MagicMock
+from datetime import datetime
+
+import pytz
+
+try:
+    from unittest.mock import patch, call, MagicMock
+except ImportError:
+    from mock import patch, call, MagicMock
 
 from graphite_api import functions
 from graphite_api.app import app
@@ -984,6 +991,7 @@ class FunctionsTest(TestCase):
         ctx = {
             'startTime': parseATTime('-1min'),
             'endTime': parseATTime('now'),
+            'tzinfo': pytz.timezone('UTC'),
         }
         series = self._generate_series_list(config=[range(100)])
         for s in series:
@@ -1002,6 +1010,9 @@ class FunctionsTest(TestCase):
 
         summ = functions.smartSummarize(ctx, series, '5s', 'min')[0]
         self.assertEqual(summ[:3], [42, 47, 52])
+
+        # Higher time interval should not trigger timezone errors
+        functions.smartSummarize(ctx, series, '100s', 'min')[0]
 
     def test_summarize(self):
         series = self._generate_series_list(config=[list(range(99)) + [None]])
@@ -1070,3 +1081,38 @@ class FunctionsTest(TestCase):
         ]
         results = functions.multiplySeriesWithWildcards({}, s1 + s2, 2, 3)
         self.assertEqual(results, expected)
+
+    def test_timeslice(self):
+        series = [
+            TimeSeries('test.value', 0, 600, 60,
+                       [None, 1, 2, 3, None, 5, 6, None, 7, 8, 9]),
+        ]
+
+        expected = [
+            TimeSeries('timeSlice(test.value, 180, 480)', 0, 600, 60,
+                       [None, None, None, 3, None, 5, 6, None, 7, None, None]),
+        ]
+
+        results = functions.timeSlice({
+            'startTime': datetime(1970, 1, 1, 0, 0, 0, 0, pytz.utc),
+            'endTime': datetime(1970, 1, 1, 0, 9, 0, 0, pytz.utc),
+            'data': [],
+        }, series, '00:03 19700101', '00:08 19700101')
+        self.assertEqual(results, expected)
+
+    def test_remove_emtpy(self):
+        series = [
+            TimeSeries('foo.bar', 0, 100, 10,
+                       [None, None, None, 0, 0, 0, 1, 1, 1, None]),
+            TimeSeries('foo.baz', 0, 100, 10, [None] * 10),
+            TimeSeries('foo.blah', 0, 100, 10,
+                       [None, None, None, 0, 0, 0, 0, 0, 0, None]),
+        ]
+
+        results = functions.removeEmptySeries({}, series)
+        self.assertEqual(results, [series[0], series[2]])
+
+    def test_legend_value_with_system_preserves_sign(self):
+        series = [TimeSeries("foo", 0, 1, 1, [-10000, -20000, -30000, -40000])]
+        [result] = functions.legendValue({}, series, "avg", "si")
+        self.assertEqual(result.name, "foo                 avg  -25.00K   ")

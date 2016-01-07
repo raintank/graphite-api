@@ -1,8 +1,25 @@
 Graphite-API releases
 =====================
 
-1.0.2 -- **in development**
----------------------------
+1.1.2 -- 2015-11-19
+-------------------
+
+* Fix regression in multi fetch handling: paths were queried multiple times,
+  leading to erroneous behaviour and slowdown.
+* Continue on IndexError in ``remove{Above,Below}Percentile`` functions.
+
+1.1.1 -- 2015-10-23
+-------------------
+
+* Fix ``areaMode=stacked``.
+
+* Fix error when calling functions that use ``fetchWithBootstrap`` and the
+  bootstrap range isn't available (fill with nulls instead).
+
+1.1 -- 2015-10-05
+-----------------
+
+* Add CarbonLink support.
 
 * Add support for configuring a cache backend and the ``noCache`` and
   ``cacheTimeout`` API options.
@@ -16,8 +33,8 @@ Graphite-API releases
   database-backed finders such as Cyanite because it allows fetching all time
   series at once instead of sequentially.
 
-* Add ``multiplySeriesWithWildcards``, ``minimumBelow`` and ``changed``
-  functions.
+* Add ``multiplySeriesWithWildcards``, ``minimumBelow``, ``changed``,
+  ``timeSlice`` and ``removeEmptySeries`` functions.
 
 * Add optional ``step`` argument to ``time``, ``sin`` and ``randomWalk``
   functions.
@@ -34,6 +51,17 @@ Graphite-API releases
 
 * Change ``sum()`` to return ``null`` instead of 0 when all series' datapoints
   are null at the same time. This is graphite-web's behavior.
+
+* Extract paths of all targets before fetching data. This is a significant
+  optimization for storage backends such as Cyanite that allow bulk-fetching
+  metrics.
+
+* Add JSONP support to all API endpoints that can return JSON.
+
+* Fix 500 error when generating a SVG graph without any data.
+
+* Return tracebacks in the HTTP response when app errors occur. This behavior
+  can be disabled in the configuration.
 
 * Fixes for the following graphite-web issues:
 

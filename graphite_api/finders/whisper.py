@@ -5,6 +5,7 @@ import os.path
 import time
 from structlog import get_logger
 
+from ..carbonlink import CarbonLinkPool
 from ..intervals import Interval, IntervalSet
 from ..node import BranchNode, LeafNode
 from .._vendor import whisper
@@ -17,6 +18,11 @@ logger = get_logger()
 class WhisperFinder(object):
     def __init__(self, config):
         self.directories = config['whisper']['directories']
+        self.carbonlink = None
+        if 'carbon' in config:
+            self.carbonlink = CarbonLinkPool(**config['carbon'])
+        else:
+            self.carbonlink = None
 
     def find_nodes(self, query):
         logger.debug("find_nodes", finder="whisper", start=query.startTime,
@@ -48,12 +54,14 @@ class WhisperFinder(object):
 
                 elif os.path.isfile(absolute_path):
                     if absolute_path.endswith('.wsp'):
-                        reader = WhisperReader(absolute_path, real_metric_path)
+                        reader = WhisperReader(absolute_path, real_metric_path,
+                                               self.carbonlink)
                         yield LeafNode(metric_path, reader)
 
                     elif absolute_path.endswith('.wsp.gz'):
                         reader = GzippedWhisperReader(absolute_path,
-                                                      real_metric_path)
+                                                      real_metric_path,
+                                                      self.carbonlink)
                         yield LeafNode(metric_path, reader)
 
     def _find_paths(self, current_dir, patterns):
@@ -85,18 +93,19 @@ class WhisperFinder(object):
 
 
 class WhisperReader(object):
-    __slots__ = ('fs_path', 'real_metric_path')
+    __slots__ = ('fs_path', 'real_metric_path', 'carbonlink')
 
-    def __init__(self, fs_path, real_metric_path):
+    def __init__(self, fs_path, real_metric_path, carbonlink=None):
         self.fs_path = fs_path
         self.real_metric_path = real_metric_path
+        self.carbonlink = carbonlink
 
     def get_intervals(self):
         start = time.time() - whisper.info(self.fs_path)['maxRetention']
         end = max(os.stat(self.fs_path).st_mtime, start)
         return IntervalSet([Interval(start, end)])
 
-    def fetch(self, startTime, endTime):
+    def fetch(self, startTime, endTime):  # noqa
         logger.debug("fetch", reader="whisper", path=self.fs_path,
                      metric_path=self.real_metric_path,
                      start=startTime, end=endTime)
@@ -106,6 +115,19 @@ class WhisperReader(object):
 
         time_info, values = data
         start, end, step = time_info
+
+        if self.carbonlink:
+            cached_datapoints = self.carbonlink.query(self.real_metric_path)
+            if isinstance(cached_datapoints, dict):
+                cached_datapoints = cached_datapoints.items()
+            for timestamp, value in sorted(cached_datapoints):
+                # filter only to cached datapoints within [start, end)
+                if not (timestamp >= start and timestamp < end):
+                    continue
+                interval = timestamp - (timestamp % step)
+                i = int(interval - start) // step
+                values[i] = value
+
         return time_info, values
 
 
@@ -113,7 +135,7 @@ class GzippedWhisperReader(WhisperReader):
     def get_intervals(self):
         fh = gzip.GzipFile(self.fs_path, 'rb')
         try:
-            info = whisper.__readHeader(fh)  # evil, but necessary.
+            info = getattr(whisper, '__readHeader')(fh)  # evil, but necessary.
         finally:
             fh.close()
 

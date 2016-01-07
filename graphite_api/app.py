@@ -1,6 +1,7 @@
 import os
 import csv
 import json
+import itertools
 import math
 import pytz
 import shutil
@@ -27,9 +28,11 @@ from .utils import RequestParams, hash_request
 logger = get_logger()
 
 
-def jsonify(data, status=200, jsonp=False, headers=None):
+def jsonify(data, status=200, headers=None):
     if headers is None:
         headers = {}
+
+    jsonp = RequestParams.get('jsonp', False)
 
     body = json.dumps(data, cls=JSONEncoder)
     if jsonp:
@@ -95,24 +98,6 @@ def events():
 
 
 # API calls that actually do something
-@app.route('/metrics/search', methods=methods)
-def metrics_search():
-    errors = {}
-    try:
-        max_results = int(RequestParams.get('max_results', 25))
-    except ValueError:
-        errors['max_results'] = 'must be an integer.'
-    if 'query' not in RequestParams:
-        errors['query'] = 'this parameter is required.'
-    if errors:
-        return jsonify({'errors': errors}, status=400)
-    results = sorted(app.searcher.search(
-        query=RequestParams['query'],
-        max_results=max_results,
-    ), key=lambda result: result['path'] or '')
-    return jsonify({'metrics': results})
-
-
 @app.route('/metrics', methods=methods)
 @app.route('/metrics/find', methods=methods)
 def metrics_find():
@@ -127,13 +112,18 @@ def metrics_find():
         errors['wildcards'] = 'must be 0 or 1.'
 
     try:
-        from_time = int(RequestParams.get('from', 0))
+        from_time = int(RequestParams.get('from', -1))
     except ValueError:
         errors['from'] = 'must be an epoch timestamp.'
     try:
-        until_time = int(RequestParams.get('until', 0))
+        until_time = int(RequestParams.get('until', -1))
     except ValueError:
         errors['until'] = 'must be an epoch timestamp.'
+
+    if from_time == -1:
+        from_time = None
+    if until_time == -1:
+        until_time = None
 
     format = RequestParams.get('format', 'treejson')
     if format not in ['treejson', 'completer']:
@@ -223,7 +213,7 @@ def metrics_index():
             recurse('*', index)
     else:
         recurse('*', index)
-    return jsonify(sorted(index), jsonp=RequestParams.get('jsonp', False))
+    return jsonify(sorted(index))
 
 
 def prune_datapoints(series, max_datapoints, start, end):
@@ -235,9 +225,9 @@ def prune_datapoints(series, max_datapoints, start, end):
         )
         seconds_per_point = values_per_point * series.step
         nudge = (
-            seconds_per_point
-            + (series.start % series.step)
-            - (series.start % seconds_per_point)
+            seconds_per_point +
+            (series.start % series.step) -
+            (series.start % seconds_per_point)
         )
         series.start += nudge
         values_to_lose = nudge // series.step
@@ -378,9 +368,20 @@ def render():
     context = {
         'startTime': request_options['startTime'],
         'endTime': request_options['endTime'],
+        'tzinfo': request_options['tzinfo'],
         'data': [],
         'consolidateBy': None,
     }
+
+    # Gather all data to take advantage of backends with fetch_multi
+    paths = []
+    for target in request_options['targets']:
+        if request_options['graphType'] == 'pie':
+            if ':' in target:
+                continue
+        if target.strip():
+            paths += pathsFromTarget(target)
+    data_store = fetchData(context, paths)
 
     if request_options['graphType'] == 'pie':
         for target in request_options['targets']:
@@ -392,7 +393,7 @@ def render():
                     errors['target'] = "Invalid target: '{0}'.".format(target)
                 context['data'].append((name, value))
             else:
-                series_list = evaluateTarget(context, target)
+                series_list = evaluateTarget(context, target, data_store)
 
                 for series in series_list:
                     func = app.functions[request_options['pieMode']]
@@ -406,7 +407,7 @@ def render():
         for target in request_options['targets']:
             if not target.strip():
                 continue
-            series_list = evaluateTarget(context, target)
+            series_list = evaluateTarget(context, target, data_store)
             context['data'].extend(series_list)
 
         request_options['format'] = request_options.get('format')
@@ -442,17 +443,10 @@ def render():
                     timestamps = range(series.start, series.end + series.step,
                                        series.step)
                     datapoints = zip(series, timestamps)
-                    # if we are executing a graphiteCheck, then we want to
-                    # know the pathExpression that is being returned without
-                    # all of the functions that wrap it.
-                    #  g.pathExpression is stored by evaluateTokens()
-                    if RequestParams.get('graphiteCheck'):
-                        series.name = g.pathExpression
                     series_data.append({'target': series.name,
                                         'datapoints': datapoints})
 
-            return jsonify(series_data, headers=headers,
-                           jsonp=request_options.get('jsonp', False))
+            return jsonify(series_data, headers=headers)
 
         if request_options['format'] == 'raw':
             response = StringIO()
@@ -488,9 +482,29 @@ def render():
     return response
 
 
-def evaluateTarget(requestContext, target):
+def pathsFromTarget(target):
     tokens = grammar.parseString(target)
-    result = evaluateTokens(requestContext, tokens)
+    return list(pathsFromTokens(tokens))
+
+
+def pathsFromTokens(tokens):
+    iters = []
+    if tokens.expression:
+        iters.append(pathsFromTokens(tokens.expression))
+    elif tokens.pathExpression:
+        iters.append([tokens.pathExpression])
+    elif tokens.call:
+        iters.extend([pathsFromTokens(arg)
+                      for arg in tokens.call.args])
+        iters.extend([pathsFromTokens(kwarg.args[0])
+                      for kwarg in tokens.call.kwargs])
+    for path in itertools.chain(*iters):
+        yield path
+
+
+def evaluateTarget(requestContext, target, data_store):
+    tokens = grammar.parseString(target)
+    result = evaluateTokens(requestContext, tokens, data_store)
 
     if isinstance(result, TimeSeries):
         return [result]  # we have to return a list of TimeSeries objects
@@ -498,25 +512,26 @@ def evaluateTarget(requestContext, target):
     return result
 
 
-def evaluateTokens(requestContext, tokens):
+def evaluateTokens(requestContext, tokens, data_store):
     if tokens.expression:
-        return evaluateTokens(requestContext, tokens.expression)
+        return evaluateTokens(requestContext, tokens.expression, data_store)
 
     elif tokens.pathExpression:
-        # keep track of the metric path so that we can reference it later.
-        g.pathExpression = tokens.pathExpression
-        return fetchData(requestContext, tokens.pathExpression)
+        return data_store.get_series_list(tokens.pathExpression)
 
     elif tokens.call:
         func = app.functions[tokens.call.funcname]
         if tokens.call.funcname == "consolidateBy":
             requestContext['consolidateBy'] = tokens.call.args[1][0]
         args = [evaluateTokens(requestContext,
-                               arg) for arg in tokens.call.args]
+                               arg, data_store) for arg in tokens.call.args]
         kwargs = dict([(kwarg.argname,
-                        evaluateTokens(requestContext, kwarg.args[0]))
+                        evaluateTokens(requestContext,
+                                       kwarg.args[0],
+                                       data_store))
                        for kwarg in tokens.call.kwargs])
-        return func(requestContext, *args, **kwargs)
+        ret = func(requestContext, *args, **kwargs)
+        return ret
 
     elif tokens.number:
         if tokens.number.integer:

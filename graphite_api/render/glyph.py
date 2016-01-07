@@ -36,7 +36,7 @@ colorAliases = {
     'white': (255, 255, 255),
     'blue': (100, 100, 255),
     'green': (0, 200, 0),
-    'red': (200, 00, 50),
+    'red': (255, 0, 0),
     'yellow': (255, 255, 0),
     'orange': (255, 165, 0),
     'purple': (200, 100, 255),
@@ -51,12 +51,12 @@ colorAliases = {
     'rose': (200, 150, 200),
     'darkblue': (0, 0, 255),
     'darkgreen': (0, 255, 0),
-    'darkred': (255, 0, 0),
+    'darkred': (200, 00, 50),
     'darkgray': (111, 111, 111),
     'darkgrey': (111, 111, 111),
 }
 
-# This gets overriden by graphTemplates.conf
+# This gets overridden by graphTemplates.conf
 defaultGraphOptions = dict(
     background='white',
     foreground='black',
@@ -216,7 +216,7 @@ xAxisConfigs = (
          labelStep=1,
          format="%m/%d",
          maxInterval=14*DAY),
-    dict(seconds=600,
+    dict(seconds=1000,
          minorGridUnit=HOUR,
          minorGridStep=12,
          majorGridUnit=DAY,
@@ -635,40 +635,45 @@ class Graph(object):
         if self.outputFormat == 'png':
             self.surface.write_to_png(fileObj)
         else:
-            metaData = {
-                'x': {
-                    'start': self.startTime,
-                    'end': self.endTime
-                },
-                'options': {
-                    'lineWidth': self.lineWidth
-                },
-                'font': self.defaultFontParams,
-                'area': self.area,
-                'series': []
-            }
-
-            if not self.secondYAxis:
-                metaData['y'] = {
-                    'top': self.yTop,
-                    'bottom': self.yBottom,
-                    'step': self.yStep,
-                    'labels': self.yLabels,
-                    'labelValues': self.yLabelValues
+            if hasattr(self, 'startTime'):
+                has_data = True
+                metaData = {
+                    'x': {
+                        'start': self.startTime,
+                        'end': self.endTime
+                    },
+                    'options': {
+                        'lineWidth': self.lineWidth
+                    },
+                    'font': self.defaultFontParams,
+                    'area': self.area,
+                    'series': []
                 }
 
-            for series in self.data:
-                if 'stacked' not in series.options:
-                    metaData['series'].append({
-                        'name': series.name,
-                        'start': series.start,
-                        'end': series.end,
-                        'step': series.step,
-                        'valuesPerPoint': series.valuesPerPoint,
-                        'color': series.color,
-                        'data': series,
-                        'options': series.options
-                    })
+                if not self.secondYAxis:
+                    metaData['y'] = {
+                        'top': self.yTop,
+                        'bottom': self.yBottom,
+                        'step': self.yStep,
+                        'labels': self.yLabels,
+                        'labelValues': self.yLabelValues
+                    }
+
+                for series in self.data:
+                    if 'stacked' not in series.options:
+                        metaData['series'].append({
+                            'name': series.name,
+                            'start': series.start,
+                            'end': series.end,
+                            'step': series.step,
+                            'valuesPerPoint': series.valuesPerPoint,
+                            'color': series.color,
+                            'data': series,
+                            'options': series.options
+                        })
+            else:
+                has_data = False
+                metaData = {}
 
             self.surface.finish()
             svgData = self.surfaceData.getvalue()
@@ -680,23 +685,21 @@ class Graph(object):
             svgData = svgData.replace('</defs>\n<g',
                                       '</defs>\n<g class="graphite"', 1)
 
-            # We encode headers using special paths with d^="M -88 -88"
-            # Find these, and turn them into <g> wrappers instead
-            def onHeaderPath(match):
-                name = ''
-                for char in re.findall(r'L -(\d+) -\d+', match.group(1)):
-                    name += chr(int(char))
-                return '</g><g data-header="true" class="%s">' % name
-            svgData, subs = re.subn(r'<path.+?d="M -88 -88 (.+?)"/>',
-                                    onHeaderPath, svgData)
+            if has_data:
+                # We encode headers using special paths with d^="M -88 -88"
+                # Find these, and turn them into <g> wrappers instead
+                def onHeaderPath(match):
+                    name = ''
+                    for char in re.findall(r'L -(\d+) -\d+', match.group(1)):
+                        name += chr(int(char))
+                    return '</g><g data-header="true" class="%s">' % name
+                svgData, subs = re.subn(r'<path.+?d="M -88 -88 (.+?)"/>',
+                                        onHeaderPath, svgData)
 
-            # Replace the first </g><g> with <g>, and close out the last </g>
-            # at the end
-            svgData = svgData.replace('</g><g data-header',
-                                      '<g data-header', 1)
-            svgData = svgData.replace(' data-header="true"', '')
-            if subs > 0:
-                svgData += "</g>"
+                # Hack to replace the first </g><g> with <g>
+                svgData = svgData.replace('</g><g data-header',
+                                          '<g data-header', 1)
+                svgData = svgData.replace(' data-header="true"', '')
 
             fileObj.write(svgData.encode())
             fileObj.write(("""<script>
@@ -717,7 +720,8 @@ class LineGraph(Graph):
         'yMaxLeft', 'yMaxRight', 'yLimitLeft', 'yLimitRight', 'yStepLeft',
         'yStepRight', 'rightWidth', 'rightColor', 'rightDashed', 'leftWidth',
         'leftColor', 'leftDashed', 'xFormat', 'minorY', 'hideYAxis',
-        'uniqueLegend', 'vtitleRight', 'yDivisors', 'connectedLimit')
+        'hideXAxis', 'uniqueLegend', 'vtitleRight', 'yDivisors',
+        'connectedLimit')
     validLineModes = ('staircase', 'slope', 'connected')
     validAreaModes = ('none', 'first', 'all', 'stacked')
     validPieModes = ('maximum', 'minimum', 'average')
@@ -753,6 +757,7 @@ class LineGraph(Graph):
             params['hideLegend'] = True
             params['hideGrid'] = True
             params['hideAxes'] = True
+            params['hideXAxis'] = False
             params['hideYAxis'] = False
             params['yAxisSide'] = 'left'
             params['title'] = ''
@@ -852,7 +857,10 @@ class LineGraph(Graph):
 
         # Setup axes, labels, and grid
         # First we adjust the drawing area size to fit X-axis labels
-        if not self.params.get('hideAxes', False):
+        if (
+            not self.params.get('hideAxes', False) and
+            not self.params.get('hideXAxis', False)
+        ):
             self.area['ymax'] -= self.getExtents()['maxAscent'] * 2
 
         self.startTime = min([series.start for series in self.data])
@@ -966,8 +974,8 @@ class LineGraph(Graph):
             if value <= 0:
                 return None
             relativeValue = (
-                math.log(value, self.logBase)
-                - math.log(lowestValue, self.logBase))
+                math.log(value, self.logBase) -
+                math.log(lowestValue, self.logBase))
             valueRange = math.log(highestValue, self.logBase) - math.log(
                 lowestValue, self.logBase)
 
@@ -1219,7 +1227,10 @@ class LineGraph(Graph):
         self.ctx.line_to(x, areaYFrom)  # bottom endX
         self.ctx.line_to(startX, areaYFrom)  # bottom startX
         self.ctx.close_path()
-        self.ctx.fill()
+        if self.areaMode == 'all':
+            self.ctx.fill_preserve()
+        else:
+            self.ctx.fill()
 
         # clip above y axis
         self.ctx.append_path(pattern)
@@ -1246,7 +1257,7 @@ class LineGraph(Graph):
         for series in self.data:
             numberOfDataPoints = self.timeRange / series.step
             minXStep = float(self.params.get('minXStep', 1.0))
-            divisor = self.timeRange / series.step
+            divisor = self.timeRange / series.step or 1
             bestXStep = numberOfPixels / divisor
             if bestXStep < minXStep:
                 drawableDataPoints = int(numberOfPixels / minXStep)
@@ -1262,12 +1273,14 @@ class LineGraph(Graph):
         seriesWithMissingValues = [series for series in self.data
                                    if None in series]
 
-        if self.params.get('drawNullAsZero') and seriesWithMissingValues:
+        yMinValue = safeMin([safeMin(series) for series in self.data
+                             if not series.options.get('drawAsInfinite')])
+        if (
+            yMinValue > 0.0 and
+            self.params.get('drawNullAsZero') and
+            seriesWithMissingValues
+        ):
             yMinValue = 0.0
-        else:
-            yMinValue = safeMin([
-                safeMin(series) for series in self.data
-                if not series.options.get('drawAsInfinite')])
 
         if self.areaMode == 'stacked':
             length = safeMin([
@@ -1284,6 +1297,13 @@ class LineGraph(Graph):
             yMaxValue = safeMax([
                 safeMax(series) for series in self.data
                 if not series.options.get('drawAsInfinite')])
+
+        if (
+            yMaxValue < 0.0 and
+            self.params.get('drawNullAsZero') and
+            seriesWithMissingValues
+        ):
+            yMaxValue = 0.0
 
         if yMinValue is None:
             yMinValue = 0.0
@@ -1666,8 +1686,8 @@ class LineGraph(Graph):
         self.xScaleFactor = float(self.graphWidth) / float(self.timeRange)
 
         potential = [
-            c for c in xAxisConfigs if c['seconds'] <= secondsPerPixel
-            and c.get('maxInterval', self.timeRange + 1) >= self.timeRange]
+            c for c in xAxisConfigs if c['seconds'] <= secondsPerPixel and
+            c.get('maxInterval', self.timeRange + 1) >= self.timeRange]
         if potential:
             self.xConf = potential[-1]
         else:
@@ -1727,19 +1747,20 @@ class LineGraph(Graph):
                     self.drawText(labelR, xR, yR, align='left',
                                   valign='middle')
 
-        dt, x_label_delta = find_x_times(self.start_dt,
-                                         self.xConf['labelUnit'],
-                                         self.xConf['labelStep'])
+        if not self.params.get('hideXAxis'):
+            dt, x_label_delta = find_x_times(self.start_dt,
+                                             self.xConf['labelUnit'],
+                                             self.xConf['labelStep'])
 
-        # Draw the X-labels
-        xFormat = self.params.get('xFormat', self.xConf['format'])
-        while dt < self.end_dt:
-            label = dt.strftime(xFormat)
-            x = self.area['xmin'] + (
-                to_seconds(dt - self.start_dt) * self.xScaleFactor)
-            y = self.area['ymax'] + self.getExtents()['maxAscent']
-            self.drawText(label, x, y, align='center', valign='top')
-            dt += x_label_delta
+            # Draw the X-labels
+            xFormat = self.params.get('xFormat', self.xConf['format'])
+            while dt < self.end_dt:
+                label = dt.strftime(xFormat)
+                x = self.area['xmin'] + (
+                    to_seconds(dt - self.start_dt) * self.xScaleFactor)
+                y = self.area['ymax'] + self.getExtents()['maxAscent']
+                self.drawText(label, x, y, align='center', valign='top')
+                dt += x_label_delta
 
     def drawGridLines(self):
         # Not sure how to handle this for 2 y-axes
@@ -1991,12 +2012,14 @@ def safeMin(args):
     args = [arg for arg in args if arg not in (None, INFINITY)]
     if args:
         return min(args)
+    return 0
 
 
 def safeMax(args):
     args = [arg for arg in args if arg not in (None, INFINITY)]
     if args:
         return max(args)
+    return 0
 
 
 def safeSum(values):
@@ -2009,6 +2032,13 @@ def sort_stacked(series_list):
     return stacked + not_stacked
 
 
+def condition(value, size, step):
+    if step is None:
+        return abs(value) >= size
+    else:
+        return abs(value) >= size and step >= size
+
+
 def format_units(v, step=None, system="si"):
     """Format the given value in standardized units.
 
@@ -2018,14 +2048,8 @@ def format_units(v, step=None, system="si"):
         http://en.wikipedia.org/wiki/SI_prefix
         http://en.wikipedia.org/wiki/Binary_prefix
     """
-
-    if step is None:
-        condition = lambda size: abs(v) >= size
-    else:
-        condition = lambda size: abs(v) >= size and step >= size
-
     for prefix, size in UnitSystems[system]:
-        if condition(size):
+        if condition(v, size, step):
             v2 = v / size
             if v2 - math.floor(v2) < 0.00000000001 and v > 1:
                 v2 = math.floor(v2)
