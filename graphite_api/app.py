@@ -487,17 +487,20 @@ def pathsFromTarget(target):
     return list(pathsFromTokens(tokens))
 
 
-def pathsFromTokens(tokens):
+def pathsFromTokens(tokens, consolidateBy=None):
     iters = []
     if tokens.expression:
-        iters.append(pathsFromTokens(tokens.expression))
+        iters.append(pathsFromTokens(tokens.expression, consolidateBy))
     elif tokens.pathExpression:
-        iters.append([tokens.pathExpression])
+        iters.append([(tokens.pathExpression, consolidateBy)])
     elif tokens.call:
-        iters.extend([pathsFromTokens(arg)
+        if tokens.call.funcname == "consolidateBy":
+            consolidateBy = tokens.call.args[1][0]
+        iters.extend([pathsFromTokens(arg, consolidateBy)
                       for arg in tokens.call.args])
-        iters.extend([pathsFromTokens(kwarg.args[0])
+        iters.extend([pathsFromTokens(kwarg.args[0], consolidateBy)
                       for kwarg in tokens.call.kwargs])
+
     for path in itertools.chain(*iters):
         yield path
 
@@ -521,8 +524,6 @@ def evaluateTokens(requestContext, tokens, data_store):
 
     elif tokens.call:
         func = app.functions[tokens.call.funcname]
-        if tokens.call.funcname == "consolidateBy":
-            requestContext['consolidateBy'] = tokens.call.args[1][0]
         args = [evaluateTokens(requestContext,
                                arg, data_store) for arg in tokens.call.args]
         kwargs = dict([(kwarg.argname,

@@ -138,11 +138,11 @@ def fetchData(requestContext, pathExprs):
     path_to_exprs = defaultdict(list)
 
     # Group nodes that support multiple fetches
-    for pathExpr in pathExprs:
+    for pathExpr, consolidateBy in pathExprs:
         for node in app.store.find(pathExpr, startTime, endTime, leaves_only=True):
             if not node.is_leaf:
                 continue
-            node.consolidateBy = requestContext['consolidateBy']
+            node.consolidateBy = consolidateBy
             if node.path not in path_to_exprs:
                 if hasattr(node, '__fetch_multi__'):
                     multi_nodes[node.__fetch_multi__].append(node)
