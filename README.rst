@@ -19,7 +19,6 @@ Implemented API calls:
 
 * ``/metrics/find``
 * ``/metrics/expand``
-* ``/metrics/search`` (removed strange ``keep_query_pattern`` parameter)
 * ``/render``
 
 No-ops:
@@ -38,8 +37,7 @@ Difference from graphite-web
 ----------------------------
 
 * Stateless. No need for a database.
-* No caching. Rendering is live.
-* No Pickle.
+* No Pickle rendering.
 * No remote rendering.
 * JSON data in request bodies is supported, additionally to form data and
   querystring parameters.

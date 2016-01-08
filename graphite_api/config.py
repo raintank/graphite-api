@@ -1,9 +1,11 @@
 import logging
 import os
 import structlog
+import traceback
 import warnings
 import yaml
 
+from flask import make_response
 from tzlocal import get_localzone
 from importlib import import_module
 from structlog.processors import (format_exc_info, JSONRenderer,
@@ -75,6 +77,11 @@ def load_by_path(path):
     return getattr(finder, klass)
 
 
+def error_handler(e):
+    return make_response(traceback.format_exc(), 500,
+                         {'Content-Type': 'text/plain'})
+
+
 def configure(app):
     config_file = os.environ.get('GRAPHITE_API_CONFIG',
                                  '/etc/graphite-api.yaml')
@@ -119,9 +126,17 @@ def configure(app):
                 cache_conf['CACHE_{0}'.format(key.upper())] = value
             app.cache = Cache(app, config=cache_conf)
 
-    loaded_config = {'functions': {}, 'finders': []}
+    loaded_config = {'functions': {}}
     for functions in config['functions']:
         loaded_config['functions'].update(load_by_path(functions))
+
+    if 'carbon' in config:
+        if 'hashing_keyfunc' in config['carbon']:
+            config['carbon']['hashing_keyfunc'] = load_by_path(
+                config['carbon']['hashing_keyfunc'])
+        else:
+            config['carbon']['hashing_keyfunc'] = lambda x: x
+    loaded_config['carbon'] = config.get('carbon', None)
 
     finders = []
     for finder in config['finders']:
@@ -147,6 +162,8 @@ def configure(app):
 
     app.wsgi_app = TrailingSlash(CORS(app.wsgi_app,
                                       config.get('allowed_origins')))
+    if config.get('render_errors', True):
+        app.errorhandler(500)(error_handler)
 
 
 def configure_logging(config):
