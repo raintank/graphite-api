@@ -44,6 +44,7 @@ default_conf = {
     },
     'time_zone': get_localzone().zone,
     'admin_token': 'jk832sjksf9asdkvnngddfg8sfk',
+    'multi_tenant': False,
 
 }
 if default_conf['time_zone'] == 'local':  # tzlocal didn't find anything
@@ -148,6 +149,7 @@ def configure(app):
     logger.info("configured timezone", timezone=app.config['TIME_ZONE'])
 
     app.config['admin_token'] = config['admin_token']
+    app.config['multi_tenant'] = config['multi_tenant']
     
     
     if 'sentry_dsn' in config:
