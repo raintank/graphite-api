@@ -75,10 +75,13 @@ methods = ('GET', 'POST')
 # ensure the request is authenticated.
 @app.before_request
 def authenticate():
-    if 'x-org-id' in request.headers:
-        g.org = int(request.headers['x-org-id'])
+    if app.config['multi_tenant']:
+        if 'x-org-id' in request.headers:
+            g.org = int(request.headers['x-org-id'])
+        else:
+           return 'not authenticated', 403
     else:
-       return 'not authenticated', 403
+        g.org = 1
 
 # No-op routes, non-essential for creating dashboards
 @app.route('/dashboard/find', methods=methods)
