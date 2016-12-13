@@ -1,12 +1,8 @@
-import os
 import csv
 import json
-import itertools
 import math
 import pytz
-import shutil
 import six
-import tempfile
 import time
 
 from collections import defaultdict
@@ -20,9 +16,8 @@ from werkzeug.http import http_date
 from .config import configure
 from .encoders import JSONEncoder
 from .render.attime import parseATTime
-from .render.datalib import fetchData, TimeSeries
+from .render.datalib import fetchData
 from .render.glyph import GraphTypes
-from .render.grammar import grammar
 from .utils import RequestParams, hash_request
 
 logger = get_logger()
@@ -47,10 +42,6 @@ class Graphite(Flask):
     @property
     def store(self):
         return self.config['GRAPHITE']['store']
-
-    @property
-    def searcher(self):
-        return self.config['GRAPHITE']['searcher']
 
     @property
     def functions(self):
@@ -123,13 +114,18 @@ def metrics_find():
     except ValueError:
         errors['until'] = 'must be an epoch timestamp.'
 
+    try:
+        node_position = int(RequestParams.get('position', -1))
+    except ValueError:
+        errors['position'] = 'must be an integer,'
+
     if from_time == -1:
         from_time = None
     if until_time == -1:
         until_time = None
 
     format = RequestParams.get('format', 'treejson')
-    if format not in ['treejson', 'completer']:
+    if format not in ['treejson', 'completer', 'nodelist']:
         errors['format'] = 'unrecognized format: "{0}".'.format(format)
 
     if 'query' not in RequestParams:
@@ -153,6 +149,12 @@ def metrics_find():
             200,
             {'Content-Type': 'application/json'}
         )
+    elif format == 'nodelist':
+        found = set()
+        for metric in matches:
+            nodes = metric.path.split('.')
+            found.add(nodes[node_position])
+        return jsonify({'nodes': sorted(found)})
 
     results = []
     for node in matches:
@@ -206,16 +208,21 @@ def metrics_expand():
     return jsonify({'results': results})
 
 
+def recurse(query, index):
+    """
+    Recursively walk across paths, adding leaves to the index as they're found.
+    """
+    for node in app.store.find(query):
+        if node.is_leaf:
+            index.add(node.path)
+        else:
+            recurse('{0}.*'.format(node.path), index)
+
+
 @app.route('/metrics/index.json', methods=methods)
 def metrics_index():
     index = set()
-    if os.path.exists(app.searcher.index_path):
-        with open(app.searcher.index_path, 'r') as f:
-            index = set([line.strip() for line in f if line])
-        if not index:
-            recurse('*', index)
-    else:
-        recurse('*', index)
+    recurse('*', index)
     return jsonify(sorted(index))
 
 
@@ -245,37 +252,20 @@ def prune_datapoints(series, max_datapoints, start, end):
     return {'target': series.name, 'datapoints': datapoints}
 
 
-def recurse(query, index):
-    """
-    Recursively walk across paths, adding leaves to the index as they're found.
-    """
-    for node in app.store.find(query):
-        if node.is_leaf:
-            index.add(node.path)
-        else:
-            recurse('{0}.*'.format(node.path), index)
-
-
-@app.route('/index', methods=['POST', 'PUT'])
-def build_index():
-    index = set()
-    recurse('*', index)
-    with tempfile.NamedTemporaryFile(delete=False) as index_file:
-        index_file.write('\n'.join(sorted(index)).encode('utf-8'))
-    shutil.move(index_file.name, app.searcher.index_path)
-    app.searcher.reload()
-    return jsonify({'success': True, 'entries': len(index)})
-
-
 @app.route('/render', methods=methods)
 def render():
+    # Start with some defaults
     errors = {}
     graph_options = {
         'width': 600,
         'height': 300,
     }
     request_options = {}
+
+    # Fill in the request_options
     graph_type = RequestParams.get('graphType', 'line')
+
+    # Fill in the request_options
     try:
         graph_class = GraphTypes[graph_type]
         request_options['graphType'] = graph_type
@@ -304,15 +294,20 @@ def render():
             g.maxDataPoints = mdp
         except ValueError:
             errors['maxDataPoints'] = 'Must be an integer.'
+    if 'noNullPoints' in RequestParams:
+        request_options['noNullPoints'] = True
 
     if errors:
         return jsonify({'errors': errors}, status=400)
 
+    # Fill in the graph_options
     for opt in graph_class.customizable:
         if opt in RequestParams:
             value = RequestParams[opt]
             try:
-                value = int(value)
+                intvalue = int(value)
+                if str(intvalue) == str(value):
+                    value = intvalue
             except ValueError:
                 try:
                     value = float(value)
@@ -332,6 +327,7 @@ def render():
             errors['tz'] = "Unknown timezone: '{0}'.".format(tz)
     request_options['tzinfo'] = tzinfo
 
+    # Get the time interval for time-oriented graph types
     until_time = parseATTime(RequestParams.get('until', 'now'), tzinfo)
     from_time = parseATTime(RequestParams.get('from', '-1d'), tzinfo)
 
@@ -342,6 +338,12 @@ def render():
 
     request_options['startTime'] = start_time
     request_options['endTime'] = end_time
+
+    template = dict()
+    for key in RequestParams.keys():
+        if key.startswith('template['):
+            template[key[9:-1]] = RequestParams.get(key)
+    request_options['template'] = template
 
     use_cache = app.cache is not None and 'noCache' not in RequestParams
     cache_timeout = RequestParams.get('cacheTimeout')
@@ -372,6 +374,7 @@ def render():
         'startTime': request_options['startTime'],
         'endTime': request_options['endTime'],
         'tzinfo': request_options['tzinfo'],
+        'template': request_options['template'],
         'data': [],
         'consolidateBy': None,
     }
@@ -383,7 +386,7 @@ def render():
             if ':' in target:
                 continue
         if target.strip():
-            paths += pathsFromTarget(target)
+            paths += pathsFromTarget(context, target)
     data_store = fetchData(context, paths)
 
     if request_options['graphType'] == 'pie':
@@ -428,7 +431,10 @@ def render():
                                      ts.strftime("%Y-%m-%d %H:%M:%S"), value))
             response.seek(0)
             headers['Content-Type'] = 'text/csv'
-            return response.read(), 200, headers
+            response = (response.read(), 200, headers)
+            if use_cache:
+                app.cache.add(request_key, response, cache_timeout)
+            return response
 
         if request_options['format'] == 'json':
             series_data = []
@@ -441,6 +447,16 @@ def render():
                     series_data.append(prune_datapoints(
                         series, request_options['maxDataPoints'],
                         start_time, end_time))
+            elif 'noNullPoints' in request_options and any(context['data']):
+                for series in context['data']:
+                    values = []
+                    for (index, v) in enumerate(series):
+                        if v is not None:
+                            timestamp = series.start + (index * series.step)
+                            values.append((v, timestamp))
+                    if len(values) > 0:
+                        series_data.append({'target': series.name,
+                                            'datapoints': values})
             else:
                 for series in context['data']:
                     timestamps = range(series.start, series.end + series.step,
@@ -449,6 +465,35 @@ def render():
                     series_data.append({'target': series.name,
                                         'datapoints': datapoints})
 
+            response = jsonify(series_data, headers=headers)
+            if use_cache:
+                app.cache.add(request_key, response, cache_timeout)
+            return response
+
+        if request_options['format'] == 'dygraph':
+            series_data = {}
+            labels = ['Time']
+            if any(context['data']):
+                datapoints = [[ts * 1000]
+                              for ts in range(context['data'][0].start,
+                                              context['data'][0].end,
+                                              context['data'][0].step)]
+                for series in context['data']:
+                    labels.append(series.name)
+                    for i, point in enumerate(series):
+                        datapoints[i].append(point)
+                series_data = {'labels': labels, 'data': datapoints}
+
+            return jsonify(series_data, headers=headers)
+
+        if request_options['format'] == 'rickshaw':
+            series_data = []
+            for series in context['data']:
+                timestamps = range(series.start, series.end, series.step)
+                datapoints = [{'x': x, 'y': y}
+                              for x, y in zip(timestamps, series)]
+                series_data.append(dict(target=series.name,
+                                   datapoints=datapoints))
             return jsonify(series_data, headers=headers)
 
         if request_options['format'] == 'raw':
@@ -460,10 +505,15 @@ def render():
                 response.write(u'\n')
             response.seek(0)
             headers['Content-Type'] = 'text/plain'
-            return response.read(), 200, headers
+            response = (response.read(), 200, headers)
+            if use_cache:
+                app.cache.add(request_key, response, cache_timeout)
+            return response
 
         if request_options['format'] == 'svg':
             graph_options['outputFormat'] = 'svg'
+        elif request_options['format'] == 'pdf':
+            graph_options['outputFormat'] = 'pdf'
 
     graph_options['data'] = context['data']
     image = doImageRender(request_options['graphClass'], graph_options)
@@ -476,80 +526,18 @@ def render():
                                       json.dumps(image.decode('utf-8'))),
                     200, headers)
     else:
-        ctype = 'image/svg+xml' if use_svg else 'image/png'
+        if use_svg:
+            ctype = 'image/svg+xml'
+        elif graph_options.get('outputFormat') == 'pdf':
+            ctype = 'application/x-pdf'
+        else:
+            ctype = 'image/png'
         headers['Content-Type'] = ctype
         response = image, 200, headers
 
     if use_cache:
         app.cache.add(request_key, response, cache_timeout)
     return response
-
-
-def pathsFromTarget(target):
-    tokens = grammar.parseString(target)
-    return list(pathsFromTokens(tokens))
-
-
-def pathsFromTokens(tokens, consolidateBy=None):
-    iters = []
-    if tokens.expression:
-        iters.append(pathsFromTokens(tokens.expression, consolidateBy))
-    elif tokens.pathExpression:
-        iters.append([(tokens.pathExpression, consolidateBy)])
-    elif tokens.call:
-        if tokens.call.funcname == "consolidateBy":
-            consolidateBy = tokens.call.args[1][0]
-        iters.extend([pathsFromTokens(arg, consolidateBy)
-                      for arg in tokens.call.args])
-        iters.extend([pathsFromTokens(kwarg.args[0], consolidateBy)
-                      for kwarg in tokens.call.kwargs])
-
-    for path in itertools.chain(*iters):
-        yield path
-
-
-def evaluateTarget(requestContext, target, data_store):
-    tokens = grammar.parseString(target)
-    result = evaluateTokens(requestContext, tokens, data_store)
-
-    if isinstance(result, TimeSeries):
-        return [result]  # we have to return a list of TimeSeries objects
-
-    return result
-
-
-def evaluateTokens(requestContext, tokens, data_store):
-    if tokens.expression:
-        return evaluateTokens(requestContext, tokens.expression, data_store)
-
-    elif tokens.pathExpression:
-        return data_store.get_series_list(tokens.pathExpression)
-
-    elif tokens.call:
-        func = app.functions[tokens.call.funcname]
-        args = [evaluateTokens(requestContext,
-                               arg, data_store) for arg in tokens.call.args]
-        kwargs = dict([(kwarg.argname,
-                        evaluateTokens(requestContext,
-                                       kwarg.args[0],
-                                       data_store))
-                       for kwarg in tokens.call.kwargs])
-        ret = func(requestContext, *args, **kwargs)
-        return ret
-
-    elif tokens.number:
-        if tokens.number.integer:
-            return int(tokens.number.integer)
-        elif tokens.number.float:
-            return float(tokens.number.float)
-        elif tokens.number.scientific:
-            return float(tokens.number.scientific[0])
-
-    elif tokens.string:
-        return tokens.string[1:-1]
-
-    elif tokens.boolean:
-        return tokens.boolean[0] == 'true'
 
 
 def tree_json(nodes, base_path, wildcards=False):
@@ -610,3 +598,6 @@ def doImageRender(graphClass, graphOptions):
     imageData = pngData.getvalue()
     pngData.close()
     return imageData
+
+
+from .evaluator import evaluateTarget, pathsFromTarget  # noqa

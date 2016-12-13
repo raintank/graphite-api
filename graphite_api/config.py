@@ -12,7 +12,6 @@ from structlog.processors import (format_exc_info, JSONRenderer,
                                   KeyValueRenderer)
 
 from .middleware import CORS, TrailingSlash
-from .search import IndexSearcher
 from .storage import Store
 from . import DEBUG
 
@@ -143,7 +142,6 @@ def configure(app):
     for finder in config['finders']:
         finders.append(load_by_path(finder)(config))
     loaded_config['store'] = Store(finders)
-    loaded_config['searcher'] = IndexSearcher(config['search_index'])
     app.config['GRAPHITE'] = loaded_config
     app.config['TIME_ZONE'] = config['time_zone']
     logger.info("configured timezone", timezone=app.config['TIME_ZONE'])

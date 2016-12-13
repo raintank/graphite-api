@@ -112,30 +112,6 @@ Example::
         "collectd.host1.load.shortterm"
     ]
 
-.. _/index:
-
-``/index``
-----------
-
-Rebuilds the search index by recursively querying the storage finders for
-available paths.
-
-Parameters:
-
-*jsonp* (optional)
-  Wraps the response in a JSONP callback.
-
-Example::
-
-    POST /index
-
-    {
-        "success": true,
-        "entries": 854
-    }
-
-``POST`` or ``PUT`` are supported.
-
 .. _render:
 
 The Render API -- ``/render``
@@ -338,11 +314,37 @@ Examples::
   &from=monday
   (show data since the previous monday)
 
+template
+````````
+
+The ``target`` metrics can use a special ``template`` function which
+allows the metric paths to contain variables. Values for these variables
+can be provided via the ``template`` query parameter.
+
+Example::
+
+  &target=template(hosts.$hostname.cpu)&template[hostname]=worker1
+
+Default values for the template variables can also be provided::
+
+  &target=template(hosts.$hostname.cpu, hostname="worker1")
+
+Positional arguments can be used instead of named ones::
+
+  &target=template(hosts.$1.cpu, "worker1")
+  &target=template(hosts.$1.cpu, "worker1")&template[1]=worker*
+
+In addition to path substitution, variables can be used for numeric
+and string literals::
+
+  &target=template(constantLine($number))&template[number]=123
+  &target=template(sinFunction($name))&template[name]=nameOfMySineWaveMetric
+
 Data Display Formats
 --------------------
 
 Along with rendering an image, the api can also generate `SVG
-<http://www.w3.org/Graphics/SVG/>`_ with embedded metadata or return the raw
+<http://www.w3.org/Graphics/SVG/>`_ with embedded metadata, PDF, or return the raw
 data in various formats for external graphing, analysis or monitoring.
 
 format
@@ -358,6 +360,9 @@ Examples::
   &format=csv
   &format=json
   &format=svg
+  &format=pdf
+  &format=dygraph
+  &format=rickshaw
 
 png
 ^^^
@@ -462,6 +467,49 @@ variable ``metadata`` being set to an object describing the graph.
     ]]>
   </script>
 
+pdf
+^^^
+
+Renders the graph as a PDF of size determined by width_ and height_.
+
+dygraph
+^^^^^^^
+
+Renders the data as a json object suitable for passing to a
+`Dygraph <http://dygraphs.com/data.html>`_ object.
+
+.. code-block:: none
+
+  {
+    "labels" : [
+      "Time",
+      "entries"
+    ],
+    "data" : [
+      [1468791890000, 0.0],
+      [1468791900000, 0.0]
+    ]
+  }
+
+rickshaw
+^^^^^^^^
+
+Renders the data as a json object suitable for passing to a
+`Rickshaw <http://code.shutterstock.com/rickshaw/tutorial/introduction.html>`_ object.
+
+.. code-block:: none
+
+  [{
+    "target": "entries",
+    "datapoints": [{
+      "y": 0.0,
+      "x": 1468791890
+    }, {
+      "y": 0.0,
+      "x": 1468791900
+    }]
+  }]
+
 rawData
 ```````
 
@@ -565,13 +613,15 @@ Examples::
   &bgcolor=blue
   &bgcolor=#2222FF
 
-.. _param-cachetimeout:
+.. _param-cacheTimeout:
 
 cacheTimeout
 ````````````
 
 Default: the value of ``cache.default_timeout`` in your configuration file. By
 default, 60 seconds.
+
+.. _param-colorList:
 
 colorList
 `````````
@@ -667,10 +717,14 @@ Example::
 
   &fontSize=8
 
+.. _param-format:
+
 format
 ``````
 
 See: `Data Display Formats`_
+
+.. _param-from:
 
 from
 ````
@@ -685,6 +739,8 @@ graphOnly
 *Default: false*
 
 Display only the graph area with no grid lines, axes, or legend.
+
+.. _param-graphType:
 
 graphType
 `````````
@@ -720,6 +776,20 @@ to accommodate the additional text.
 Example::
 
  &hideLegend=false
+
+.. _param-hideNullFromLegend:
+
+hideNullFromLegend
+------------------
+*Default: False*
+
+If set to ``true``, series with all null values will not be reported in the legend.
+
+Example:
+
+.. code-block:: none
+
+ &hideNullFromLegend=true
 
 .. _param-hideAxes:
 
@@ -765,6 +835,8 @@ Example::
 
   &hideGrid=true
 
+.. _param-height:
+
 height
 ``````
 
@@ -778,6 +850,8 @@ Example::
 
   &width=650&height=250
 
+.. _param-jsonp:
+
 jsonp
 `````
 
@@ -785,6 +859,8 @@ jsonp
 
 If set and combined with ``format=json``, wraps the JSON response in a
 function call named by the parameter specified.
+
+.. _param-leftColor:
 
 leftColor
 `````````
@@ -794,6 +870,8 @@ leftColor
 In dual Y-axis mode, sets the color of all metrics associated with the left
 Y-axis.
 
+.. _param-leftDashed:
+
 leftDashed
 ``````````
 
@@ -801,6 +879,8 @@ leftDashed
 
 In dual Y-axis mode, draws all metrics associated with the left Y-axis using
 dashed lines.
+
+.. _param-leftWidth:
 
 leftWidth
 `````````
@@ -859,6 +939,8 @@ logBase
 If set, draws the graph with a logarithmic scale of the specified base (e.g.
 10 for common logarithm).
 
+.. _param-majorGridLineColor:
+
 majorGridLineColor
 ``````````````````
 
@@ -873,6 +955,8 @@ Example::
 
   &majorGridLineColor=#FF22FF
 
+.. _param-margin:
+
 margin
 ``````
 
@@ -884,11 +968,15 @@ Example::
 
   &margin=20
 
+.. _param-max:
+
 max
 ```
 
 .. deprecated:: 0.9.0
    See yMax_
+
+.. _param-maxDataPoints:
 
 maxDataPoints
 `````````````
@@ -924,6 +1012,8 @@ Example::
 
   &minorY=3
 
+.. _param-min:
+
 min
 ```
 
@@ -947,7 +1037,7 @@ note that series with more points than there are pixels in the graph area
 there will be a good deal of line overlap. In response, one may use lineWidth_
 to compensate for this.
 
-.. _param-nocache:
+.. _param-noCache:
 
 noCache
 ```````
@@ -955,6 +1045,31 @@ noCache
 *Default: False*
 
 Set it to disable caching in rendered graphs.
+
+.. _param-noNullPoints:
+
+noNullPoints
+------------
+*Default: False*
+
+If set and combined with ``format=json``, removes all null datapoints from the series returned.
+
+.. _param-pieLabels:
+
+pieLabels
+`````````
+
+*Default: horizontal*
+
+Orientation to use for slice labels inside of a pie chart.
+
+``horizontal``
+  Labels are oriented horizontally within each slice
+
+``rotated``
+  Labels are oriented radially within each slice
+
+.. _param-pieMode:
 
 pieMode
 ```````
@@ -973,6 +1088,8 @@ The type of aggregation to use to calculate slices of a pie when
 ``minimum``
   The minimum of non-null points in the series.
 
+.. _param-rightColor:
+
 rightColor
 ``````````
 
@@ -981,6 +1098,8 @@ rightColor
 In dual Y-axis mode, sets the color of all metrics associated with the right
 Y-axis.
 
+.. _param-rightDashed:
+
 rightDashed
 ```````````
 
@@ -988,6 +1107,8 @@ rightDashed
 
 In dual Y-axis mode, draws all metrics associated with the right Y-axis using
 dashed lines.
+
+.. _param-rightWidth:
 
 rightWidth
 ``````````
@@ -1010,6 +1131,8 @@ colors and graph styles.
 Example::
 
   &template=plain
+
+.. _param-thickness:
 
 thickness
 `````````
@@ -1054,10 +1177,48 @@ uniqueLegend
 
 Display only unique legend items, removing any duplicates.
 
+.. _param-until:
+
 until
 `````
 
 See: `from / until`_
+
+.. _param-valueLabels:
+
+valueLabels
+```````````
+
+*Default: percent*
+
+Determines how slice labels are rendered within a pie chart.
+
+``none``
+  Slice labels are not shown
+
+``numbers``
+  Slice labels are reported with the original values
+
+``percent``
+  Slice labels are reported as a percent of the whole
+
+.. _param-valueLabelsColor:
+
+valueLabelsColor
+````````````````
+
+*Default: black*
+
+Color used to draw slice labels within a pie chart.
+
+.. _param-valueLabelsMin:
+
+valueLabelsMin
+``````````````
+
+*Default: 5*
+
+Slice values below this minimum will not have their labels rendered.
 
 .. _param-vtitle:
 
@@ -1072,12 +1233,16 @@ Example::
 
   &vtitle=Threads
 
+.. _param-vtitleRight:
+
 vtitleRight
 ```````````
 
 *Default: <unset>*
 
 In dual Y-axis mode, sets the title of the right Y-Axis (see: vtitle_).
+
+.. _param-width:
 
 width
 `````
@@ -1114,7 +1279,7 @@ yAxisSide
 Sets the side of the graph on which to render the Y-axis. Accepts values of
 ``left`` or ``right``.
 
-.. _param-yDivisor:
+.. _param-yDivisors:
   
 yDivisors
 `````````
@@ -1128,6 +1293,8 @@ which tries to maintain a sensible scale (e.g. preferring intermediary values
 like 25%,50%,75% over 33.3%,66.6%). To explicitly set the Y-axis values, see
 `yStep`_.
 
+.. _param-yLimit:
+
 yLimit
 ``````
 
@@ -1135,12 +1302,16 @@ yLimit
 
 See: yMax_
 
+.. _param-yLimitLeft:
+
 yLimitLeft
 ``````````
 
 *Reserved for future use*
 
 See: yMaxLeft_
+
+.. _param-yLimitRight:
 
 yLimitRight
 ```````````
@@ -1177,20 +1348,28 @@ Example::
 
   &yMax=0.2345
 
+.. _param-yMaxLeft:
+
 yMaxLeft
 ````````
 
 In dual Y-axis mode, sets the upper bound of the left Y-Axis (see: `yMax`_).
+
+.. _param-yMaxRight:
 
 yMaxRight
 `````````
 
 In dual Y-axis mode, sets the upper bound of the right Y-Axis (see: `yMax`_).
 
+.. _param-yMinLeft:
+
 yMinLeft
 ````````
 
 In dual Y-axis mode, sets the lower bound of the left Y-Axis (see: `yMin`_).
+
+.. _param-yMinRight:
 
 yMinRight
 `````````
@@ -1206,11 +1385,15 @@ yStep
 
 Manually set the value step between Y-axis labels and grid lines.
 
+.. _param-yStepLeft:
+
 yStepLeft
 `````````
 
 In dual Y-axis mode, Manually set the value step between the left Y-axis
 labels and grid lines (see: `yStep`_).
+
+.. _param-yStepRight:
 
 yStepRight
 ``````````
@@ -1233,6 +1416,12 @@ Set the unit system for compacting Y-axis values (e.g. 23,000,000 becomes
 
 ``binary``
   Use binary units (powers of 1024) - Ki, Mi, Gi, Ti, Pi.
+
+``sec``
+  Use time units (seconds) - m, H, D, M, Y.
+
+``msec``
+  Use time units (milliseconds) - s, m, H, D, M, Y.
 
 ``none``
   Dont compact values, display the raw number.

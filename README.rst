@@ -27,12 +27,6 @@ No-ops:
 * ``/dashboard/load/<name>``
 * ``/events/get_data``
 
-Additional API calls:
-
-* ``/index`` (``POST`` or ``PUT`` only): rebuilds the search index by
-  recursively querying the storage backends for available paths. Replaces
-  graphite-web's ``build-index`` command-line script.
-
 Difference from graphite-web
 ----------------------------
 
@@ -65,7 +59,7 @@ Documentation
 
 `On readthedocs.org`_ or in the ``docs/`` directory.
 
-.. _On readthedocs.org: http://graphite-api.readthedocs.org/en/latest/
+.. _On readthedocs.org: https://graphite-api.readthedocs.io/en/latest/
 
 Hacking
 -------

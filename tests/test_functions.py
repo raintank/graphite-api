@@ -1,4 +1,5 @@
 import copy
+import math
 import time
 
 from datetime import datetime
@@ -27,6 +28,351 @@ def return_less(series, value):
 
 
 class FunctionsTest(TestCase):
+
+    # Test safeSum()
+    def test_safe_sum_None(self):
+        with self.assertRaises(TypeError):
+            functions.safeSum(None)
+
+    def test_safe_sum_empty_list(self):
+        self.assertEqual(functions.safeSum([]), None)
+
+    def test_safe_sum_all_numbers(self):
+        self.assertEqual(functions.safeSum([1, 2, 3, 4]), 10)
+
+    def test_safe_sum_all_None(self):
+        self.assertEqual(functions.safeSum([None, None, None, None]), None)
+
+    def test_safe_sum_mixed(self):
+        self.assertEqual(functions.safeSum([10, None, 5, None]), 15)
+
+    # Test safeDiff()
+    def test_safe_diff_None(self):
+        with self.assertRaises(TypeError):
+            functions.safeDiff(None)
+
+    def test_safe_diff_empty_list(self):
+        self.assertEqual(functions.safeDiff([]), None)
+
+    def test_safe_diff_all_numbers(self):
+        self.assertEqual(functions.safeDiff([1, 2, 3, 4]), -8)
+
+    def test_safe_diff_all_None(self):
+        self.assertEqual(functions.safeDiff([None, None, None, None]), None)
+
+    def test_safe_diff_mixed(self):
+        self.assertEqual(functions.safeDiff([10, None, 5, None]), 5)
+
+    # Test safeLen()
+    def test_safe_len_None(self):
+        with self.assertRaises(TypeError):
+            functions.safeLen(None)
+
+    def test_safe_len_empty_list(self):
+        self.assertEqual(functions.safeLen([]), 0)
+
+    def test_safe_len_all_numbers(self):
+        self.assertEqual(functions.safeLen([1, 2, 3, 4]), 4)
+
+    def test_safe_len_all_None(self):
+        self.assertEqual(functions.safeLen([None, None, None, None]), 0)
+
+    def test_safe_len_mixed(self):
+        self.assertEqual(functions.safeLen([10, None, 5, None]), 2)
+
+    # Test safeDiv()
+    def test_safe_div_None_None(self):
+        self.assertEqual(functions.safeDiv(None, None), None)
+
+    def test_safe_div_5_None(self):
+        self.assertEqual(functions.safeDiv(5, None), None)
+
+    def test_safe_div_5_0(self):
+        self.assertEqual(functions.safeDiv(5, 0), None)
+
+    def test_safe_div_0_10(self):
+        self.assertEqual(functions.safeDiv(0, 10), 0)
+
+    def test_safe_div_10_5(self):
+        self.assertEqual(functions.safeDiv(10, 5), 2)
+
+    # Test safePow()
+    def test_save_pow_None_None(self):
+        self.assertEqual(functions.safePow(None, None), None)
+
+    def test_save_pow_5_None(self):
+        self.assertEqual(functions.safePow(5, None), None)
+
+    def test_save_pow_5_0(self):
+        self.assertEqual(functions.safePow(5, 0), 1.0)
+
+    def test_save_pow_0_10(self):
+        self.assertEqual(functions.safePow(0, 10), 0)
+
+    def test_save_pow_10_5(self):
+        self.assertEqual(functions.safePow(10, 5), 100000.0)
+
+    # Test safeMul()
+    def test_safe_mul_None_None(self):
+        self.assertEqual(functions.safeMul(None, None), None)
+
+    def test_safe_mul_5_None(self):
+        self.assertEqual(functions.safeMul(5, None), None)
+
+    def test_safe_mul_5_0(self):
+        self.assertEqual(functions.safeMul(5, 0), 0.0)
+
+    def test_safe_mul_0_10(self):
+        self.assertEqual(functions.safeMul(0, 10), 0)
+
+    def test_safe_mul_10_5(self):
+        self.assertEqual(functions.safeMul(10, 5), 50.0)
+
+    # Test safeSubtract()
+    def test_safe_subtract_None_None(self):
+        self.assertEqual(functions.safeSubtract(None, None), None)
+
+    def test_safe_subtract_5_None(self):
+        self.assertEqual(functions.safeSubtract(5, None), None)
+
+    def test_safe_subtract_5_0(self):
+        self.assertEqual(functions.safeSubtract(5, 0), 5.0)
+
+    def test_safe_subtract_0_10(self):
+        self.assertEqual(functions.safeSubtract(0, 10), -10)
+
+    def test_safe_subtract_10_5(self):
+        self.assertEqual(functions.safeSubtract(10, 5), 5)
+
+    # Test safeAvg()
+    def test_safe_avg_None(self):
+        with self.assertRaises(TypeError):
+            functions.safeAvg(None)
+
+    def test_safe_avg_empty_list(self):
+        self.assertEqual(functions.safeAvg([]), None)
+
+    def test_safe_avg_all_numbers(self):
+        self.assertEqual(functions.safeAvg([1, 2, 3, 4]), 2.5)
+
+    def test_safe_avg_all_None(self):
+        self.assertEqual(functions.safeAvg([None, None, None, None]), None)
+
+    def test_safe_avg_mixed(self):
+        self.assertEqual(functions.safeAvg([10, None, 5, None]), 7.5)
+
+    # Test safeStdDev()
+    def test_safe_stddev_None(self):
+        with self.assertRaises(TypeError):
+            functions.safeStdDev(None)
+
+    def test_safe_stddev_empty_list(self):
+        self.assertEqual(functions.safeStdDev([]), None)
+
+    def test_safe_stddev_all_numbers(self):
+        self.assertEqual(functions.safeStdDev([1, 2, 3, 4]), 1.118033988749895)
+
+    def test_safe_stddev_all_None(self):
+        self.assertEqual(functions.safeStdDev([None, None, None, None]), None)
+
+    def test_safe_stddev_mixed(self):
+        self.assertEqual(functions.safeStdDev([10, None, 5, None]), 2.5)
+
+    # Test safeLast()
+    def test_safe_last_None(self):
+        with self.assertRaises(TypeError):
+            functions.safeLast(None)
+
+    def test_safe_last_empty_list(self):
+        self.assertEqual(functions.safeLast([]), None)
+
+    def test_safe_last_all_numbers(self):
+        self.assertEqual(functions.safeLast([1, 2, 3, 4]), 4)
+
+    def test_safe_last_all_None(self):
+        self.assertEqual(functions.safeLast([None, None, None, None]), None)
+
+    def test_safe_last_mixed(self):
+        self.assertEqual(functions.safeLast([10, None, 5, None]), 5)
+
+    # Test safeMin()
+    def test_safe_min_None(self):
+        with self.assertRaises(TypeError):
+            functions.safeMin(None)
+
+    def test_safe_min_empty_list(self):
+        self.assertEqual(functions.safeMin([]), None)
+
+    def test_safe_min_all_numbers(self):
+        self.assertEqual(functions.safeMin([1, 2, 3, 4]), 1)
+
+    def test_safe_min_all_None(self):
+        self.assertEqual(functions.safeMin([None, None, None, None]), None)
+
+    def test_safe_min_mixed(self):
+        self.assertEqual(functions.safeMin([10, None, 5, None]), 5)
+
+    # Test safeMax()
+    def test_safe_max_None(self):
+        with self.assertRaises(TypeError):
+            functions.safeMax(None)
+
+    def test_safe_max_empty_list(self):
+        self.assertEqual(functions.safeMax([]), None)
+
+    def test_safe_max_all_numbers(self):
+        self.assertEqual(functions.safeMax([1, 2, 3, 4]), 4)
+
+    def test_safe_max_all_None(self):
+        self.assertEqual(functions.safeMax([None, None, None, None]), None)
+
+    def test_safe_max_mixed(self):
+        self.assertEqual(functions.safeMax([10, None, 5, None]), 10)
+
+    # Test safeAbs()
+    def test_safe_abs_None(self):
+        self.assertEqual(functions.safeAbs(None), None)
+
+    def test_safe_abs_empty_list(self):
+        with self.assertRaises(TypeError):
+            functions.safeAbs([])
+
+    def test_safe_abs_pos_number(self):
+        self.assertEqual(functions.safeAbs(1), 1)
+
+    def test_safe_abs_neg_numbers(self):
+        self.assertEqual(functions.safeAbs(-1), 1)
+
+    def test_safe_abs_zero(self):
+        self.assertEqual(functions.safeAbs(0), 0)
+
+    # Test safeMap()
+    def test_safe_map_None(self):
+        with self.assertRaises(TypeError):
+            functions.safeMap(abs, None)
+
+    def test_safe_map_empty_list(self):
+        self.assertEqual(functions.safeMap(abs, []), None)
+
+    def test_safe_map_all_numbers(self):
+        self.assertEqual(functions.safeMap(abs, [1, 2, 3, 4]), [1, 2, 3, 4])
+
+    def test_safe_map_all_None(self):
+        self.assertEqual(functions.safeMap(abs, [None, None, None, None]),
+                         None)
+
+    def test_safe_map_mixed(self):
+        self.assertEqual(functions.safeMap(abs, [10, None, 5, None]), [10, 5])
+
+    # Test gcd()
+    def test_gcd_None_None(self):
+        with self.assertRaises(TypeError):
+            functions.gcd(None, None)
+
+    def test_gcd_5_None(self):
+        with self.assertRaises(TypeError):
+            functions.gcd(5, None)
+
+    def test_gcd_5_0(self):
+        self.assertEqual(functions.gcd(5, 0), 5)
+
+    def test_gcd_0_10(self):
+        self.assertEqual(functions.gcd(0, 10), 10)
+
+    def test_gcd_10_5(self):
+        self.assertEqual(functions.gcd(10, 5), 5)
+
+    # Test lcm()
+    def test_lcm_None_None(self):
+        self.assertEqual(functions.lcm(None, None), None)
+
+    def test_lcm_5_None(self):
+        with self.assertRaises(TypeError):
+            functions.lcm(5, None)
+
+    def test_lcm_5_0(self):
+        self.assertEqual(functions.lcm(5, 0), 0)
+
+    def test_lcm_0_10(self):
+        self.assertEqual(functions.lcm(0, 10), 0)
+
+    def test_lcm_10_5(self):
+        self.assertEqual(functions.lcm(10, 5), 10)
+
+    # Test normalize()
+    def test_normalize_empty(self):
+        self.assertEqual(functions.normalize([]), [])
+
+    def test_normalize_None_values(self):
+        seriesList = []
+        seriesList.append(TimeSeries("collectd.test-db{0}.load.value", 0, 5, 1,
+                                     [None, None, None, None, None]))
+        self.assertEqual(functions.normalize([seriesList]),
+                         (seriesList, 0, 5, 1))
+
+    def test_normalize_generate_series_list_input(self):
+        seriesList = self._generate_series_list(config=[range(101),
+                                                        range(101)])
+        self.assertEqual(functions.normalize([seriesList]),
+                         (seriesList, seriesList[0].start,
+                          seriesList[0].end, 1))
+
+    # Test matchSeries()
+    def test_match_series_assert(self):
+        seriesList = self._generate_series_list()
+        with self.assertRaises(AssertionError) as context:
+            functions.matchSeries(seriesList[0], [])
+        self.assertIn('The number of series in each argument '
+                      'must be the same', str(context.exception))
+
+    def test_match_series_empty(self):
+        results = functions.matchSeries([], [])
+        for i, (series1, series2) in enumerate(results):
+            self.assertEqual(series1, [])
+            self.assertEqual(series2, [])
+
+    def test_match_series(self):
+        seriesList1 = [
+            TimeSeries('collectd.test-db3.load.value', 0, 1, 1, [3, 30, 31]),
+            TimeSeries('collectd.test-db1.load.value', 0, 1, 1, [1, 10, 11]),
+            TimeSeries('collectd.test-db2.load.value', 0, 1, 1, [2, 20, 21]),
+            TimeSeries('collectd.test-db4.load.value', 0, 1, 1, [4, 40, 41]),
+        ]
+        seriesList2 = [
+            TimeSeries('collectd.test-db4.load.value', 0, 1, 1, [4, 8, 12]),
+            TimeSeries('collectd.test-db3.load.value', 0, 1, 1, [3, 7, 11]),
+            TimeSeries('collectd.test-db1.load.value', 0, 1, 1, [1, 5, 9]),
+            TimeSeries('collectd.test-db2.load.value', 0, 1, 1, [2, 6, 10]),
+        ]
+        expectedResult = [[
+            TimeSeries('collectd.test-db1.load.value', 0, 1, 1, [1, 10, 11]),
+            TimeSeries('collectd.test-db2.load.value', 0, 1, 1, [2, 20, 21]),
+            TimeSeries('collectd.test-db3.load.value', 0, 1, 1, [3, 30, 31]),
+            TimeSeries('collectd.test-db4.load.value', 0, 1, 1, [4, 40, 41]),
+        ], [
+            TimeSeries('collectd.test-db1.load.value', 0, 1, 1, [1, 5, 9]),
+            TimeSeries('collectd.test-db2.load.value', 0, 1, 1, [2, 6, 10]),
+            TimeSeries('collectd.test-db3.load.value', 0, 1, 1, [3, 7, 11]),
+            TimeSeries('collectd.test-db4.load.value', 0, 1, 1, [4, 8, 12]),
+        ]]
+        results = functions.matchSeries(copy.deepcopy(seriesList1),
+                                        copy.deepcopy(seriesList2))
+        for i, (series1, series2) in enumerate(results):
+            self.assertEqual(series1, expectedResult[0][i])
+            self.assertEqual(series2, expectedResult[1][i])
+
+    # Test formatPathExpressions()
+    def test_format_path_expressions_empty_list(self):
+        self.assertEqual(functions.formatPathExpressions([]), '')
+
+    def test_format_path_expressions(self):
+        seriesList = self._generate_series_list()
+        self.assertEqual(functions.formatPathExpressions(seriesList),
+                         "collectd.test-db1.load.value,"
+                         "collectd.test-db2.load.value,"
+                         "collectd.test-db3.load.value,"
+                         "collectd.test-db4.load.value")
+
     def test_highest_max(self):
         config = [20, 50, 30, 40]
         seriesList = [range(max_val) for max_val in config]
@@ -71,7 +417,6 @@ class FunctionsTest(TestCase):
                  '%d, but %d ' % (index, expected, result)))
 
     def test_n_percentile(self):
-        seriesList = []
         config = [
             [15, 35, 20, 40, 50],
             range(1, 101),
@@ -84,10 +429,14 @@ class FunctionsTest(TestCase):
             [None, None, None] + list(range(0, 300)),
         ]
 
-        for i, c in enumerate(config):
-            seriesList.append(TimeSeries('Test(%d)' % i, 0, 1, 1, c))
-
-        def n_percentile(perc, expected):
+        def n_percentile(perc, expect):
+            seriesList = []
+            expected = []
+            for i, c in enumerate(config):
+                seriesList.append(TimeSeries('Test(%d)' % i, 0, len(c), 1, c))
+                expected.append(TimeSeries('nPercentile(Test(%d), %d)' %
+                                           (i, perc), 0, len(c), 1,
+                                           expect[i] * len(c)))
             result = functions.nPercentile({}, seriesList, perc)
             self.assertEqual(expected, result)
 
@@ -175,6 +524,43 @@ class FunctionsTest(TestCase):
         results = functions.drawAsInfinite({}, seriesList)
         self._verify_series_options(results, "drawAsInfinite", True)
 
+    def test_vertical_line(self):
+        result = functions.verticalLine({
+            'startTime': datetime(1970, 1, 1, 1, 0, 0, 0, pytz.utc),
+            'endTime': datetime(1970, 1, 1, 1, 2, 0, 0, pytz.utc),
+            'tzinfo': pytz.timezone('UTC'),
+        }, "01:0019700101", "foo")
+        expectedResult = [TimeSeries('foo', 3600, 3600, 1.0, [1.0, 1.0])]
+        expectedResult[0].options = {'drawAsInfinite': True}
+        self.assertEqual(result, expectedResult)
+
+    def test_vertical_line_color(self):
+        result = functions.verticalLine({
+            'startTime': datetime(1970, 1, 1, 1, 0, 0, 0, pytz.utc),
+            'endTime': datetime(1970, 1, 1, 1, 2, 0, 0, pytz.utc),
+            'tzinfo': pytz.timezone('UTC'),
+        }, "01:0019700101", "foo", "white")
+        expectedResult = [TimeSeries('foo', 3600, 3600, 1.0, [1.0, 1.0])]
+        expectedResult[0].options = {'drawAsInfinite': True}
+        expectedResult[0].color = "white"
+        self.assertEqual(result, expectedResult)
+
+    def test_vertical_line_before_start(self):
+        with self.assertRaises(ValueError):
+            functions.verticalLine({
+                'startTime': datetime(1971, 1, 1, 1, 0, 0, 0, pytz.utc),
+                'endTime': datetime(1971, 1, 1, 1, 2, 0, 0, pytz.utc),
+                'tzinfo': pytz.timezone('UTC'),
+            }, "01:0019700101", "foo")
+
+    def test_vertical_line_after_end(self):
+        with self.assertRaises(ValueError):
+            functions.verticalLine({
+                'startTime': datetime(1970, 1, 1, 1, 0, 0, 0, pytz.utc),
+                'endTime': datetime(1970, 1, 1, 1, 2, 0, 0, pytz.utc),
+                'tzinfo': pytz.timezone('UTC'),
+            }, "01:0019710101", "foo")
+
     def test_line_width(self):
         seriesList = self._generate_series_list()
         width = 10
@@ -202,6 +588,77 @@ class FunctionsTest(TestCase):
                         transform, result_val,
                         "Transformed value should be {0}, not {1}".format(
                             transform, result_val))
+
+    def test_transform_null_reference(self):
+        seriesList = self._generate_series_list()
+        transform = -5
+        referenceSeries = copy.deepcopy(seriesList[0])
+        for k, v in enumerate(referenceSeries):
+            if k % 2 != 0:
+                referenceSeries[k] = None
+
+        results = functions.transformNull({}, copy.deepcopy(seriesList),
+                                          transform, [referenceSeries])
+
+        for counter, series in enumerate(seriesList):
+            if None not in series:
+                continue
+            # Anywhere a None was in the original series, verify it
+            # was transformed to the given value if a value existed
+            # in the reference series
+            for i, value in enumerate(series):
+                if value is None and referenceSeries[i] is not None:
+                    result_val = results[counter][i]
+                    self.assertEqual(
+                        transform, result_val,
+                        "Transformed value should be {0}, not {1}".format(
+                            transform, result_val))
+
+    def test_transform_null_reference_empty(self):
+        seriesList = self._generate_series_list()
+        transform = -5
+        referenceSeries = []
+
+        results = functions.transformNull({}, copy.deepcopy(seriesList),
+                                          transform, [referenceSeries])
+
+        for counter, series in enumerate(seriesList):
+            if None not in series:
+                continue
+            # If the None values weren't transformed, there is a problem
+            self.assertNotIn(None, results[counter],
+                             "tranformNull should remove all None values")
+            # Anywhere a None was in the original series, verify it
+            # was transformed to the given value if a value existed
+            for i, value in enumerate(series):
+                if value is None:
+                    result_val = results[counter][i]
+                    self.assertEqual(
+                        transform, result_val,
+                        "Transformed value should be {0}, not {1}".format(
+                            transform, result_val))
+
+    def test_group(self):
+        seriesList = [
+            TimeSeries('collectd.test-db1.load.value',
+                       0, 600, 60, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]),
+            TimeSeries('collectd.test-db2.load.value',
+                       0, 600, 60, [None] * 10),
+            TimeSeries('collectd.test-db3.load.value',
+                       0, 600, 60, [1, 2, None, None, None, 6, 7, 8, 9, 10]),
+            TimeSeries('collectd.test-db4.load.value',
+                       0, 600, 60, [1, 2, 3, 4, 5, 6, 7, 8, 9, None]),
+        ]
+        for series in seriesList:
+            series.pathExpression = series.name
+
+        request_context = {}
+        result = functions.group(request_context, seriesList[0],
+                                 seriesList[1], seriesList[2], seriesList[3])
+        self.assertEqual(result, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, None, None,
+                                  None, None, None, None, None, None, None,
+                                  None, 1, 2, None, None, None, 6, 7, 8, 9,
+                                  10, 1, 2, 3, 4, 5, 6, 7, 8, 9, None])
 
     def test_alias(self):
         seriesList = self._generate_series_list()
@@ -280,10 +737,8 @@ class FunctionsTest(TestCase):
                 expected_value = original_value * multiplier
                 self.assertEqual(value, expected_value)
 
-    def test_average_series(self):
-        series = self._generate_series_list()
-        average = functions.averageSeries({}, series)[0]
-        self.assertEqual(average[:3], [1.0, 5/3., 3.0])
+    def test_average_series_wildcards_empty_series_int_position(self):
+        self.assertEqual(functions.averageSeriesWithWildcards({}, [], 0), [])
 
     def test_average_series_wildcards(self):
         series = self._generate_series_list()
@@ -312,7 +767,7 @@ class FunctionsTest(TestCase):
     def test_reduceSeries(self):
         sl, inputList = self._generate_mr_series()
         expectedResult = [
-            TimeSeries('group.server1.reduce.mock', 0, 1, 1, [None]),
+            TimeSeries('group.server2.reduce.mock', 0, 1, 1, [None]),
             TimeSeries('group.server2.reduce.mock', 0, 1, 1, [None])
         ]
         resultSeriesList = [TimeSeries('mock(series)', 0, 1, 1, [None])]
@@ -321,8 +776,48 @@ class FunctionsTest(TestCase):
             results = functions.reduceSeries({}, copy.deepcopy(inputList),
                                              "mock", 2, "metric1", "metric2")
             self.assertEqual(results, expectedResult)
-        self.assertEqual(mock.mock_calls, [call({}, inputList[0]),
-                                           call({}, inputList[1])])
+        self.assertEqual(mock.mock_calls, [
+            call({}, *[[x] for x in inputList[0]]),
+            call({}, *[[x] for x in inputList[1]]),
+        ])
+
+    def test_reduceSeries_asPercent(self):
+        seriesList = [
+            TimeSeries('group.server1.bytes_used', 0, 1, 1, [1]),
+            TimeSeries('group.server1.total_bytes', 0, 1, 1, [2]),
+            TimeSeries('group.server2.bytes_used', 0, 1, 1, [3]),
+            TimeSeries('group.server2.total_bytes', 0, 1, 1, [4]),
+        ]
+        for series in seriesList:
+            series.pathExpression = "tempPath"
+        expectedResult = [
+            # 50 == 100 * 1 / 2
+            TimeSeries('group.server1.reduce.asPercent', 0, 1, 1, [50]),
+            # 100 * 3 / 4
+            TimeSeries('group.server2.reduce.asPercent', 0, 1, 1, [75]),
+        ]
+        mappedResult = (
+            [seriesList[0]], [seriesList[1]], [seriesList[2]], [seriesList[3]])
+        results = functions.reduceSeries(
+            {}, copy.deepcopy(mappedResult),
+            "asPercent", 2, "bytes_used", "total_bytes")
+        self.assertEqual(results, expectedResult)
+
+    def test_pow(self):
+        seriesList = self._generate_series_list()
+        factor = 2
+        # Leave the original seriesList undisturbed for verification
+        results = functions.pow({}, copy.deepcopy(seriesList), factor)
+        for i, series in enumerate(results):
+            for counter, value in enumerate(series):
+                if value is None:
+                    continue
+                original_value = seriesList[i][counter]
+                expected_value = math.pow(original_value, factor)
+                self.assertEqual(value, expected_value)
+
+    def test_sum_series_empty(self):
+        self.assertEqual(functions.sumSeries({}, []), [])
 
     def test_sum_series(self):
         series = self._generate_series_list()
@@ -334,6 +829,9 @@ class FunctionsTest(TestCase):
                          "collectd.test-db4.load.value)")
         self.assertEqual(sum_[:3], [3, 5, 6])
 
+    def test_sum_series_wildcards_empty_series_int_position(self):
+        self.assertEqual(functions.sumSeriesWithWildcards({}, [], 0), [])
+
     def test_sum_series_wildcards(self):
         series = self._generate_series_list()
         [sum_] = functions.sumSeriesWithWildcards({}, series, 1)
@@ -344,30 +842,63 @@ class FunctionsTest(TestCase):
                          "collectd.test-db2.load.value)))")
         self.assertEqual(sum_[:3], [3, 5, 6])
 
+    def test_diff_series_empty(self):
+        self.assertEqual(functions.diffSeries({}, None), [])
+        self.assertEqual(functions.diffSeries({}, []), [])
+
     def test_diff_series(self):
         series = self._generate_series_list()[:2]
         diff = functions.diffSeries({}, [series[0]], [series[1]])[0]
         self.assertEqual(diff[:3], [-2, -2, -2])
+
+    def test_average_series_empty(self):
+        self.assertEqual(functions.averageSeries({}, None), [])
+        self.assertEqual(functions.averageSeries({}, []), [])
+
+    def test_average_series(self):
+        series = self._generate_series_list()
+        average = functions.averageSeries({}, series)[0]
+        self.assertEqual(average[:3], [1.0, 5/3., 3.0])
+
+    def test_stddev_series_empty(self):
+        self.assertEqual(functions.stddevSeries({}, None), [])
+        self.assertEqual(functions.stddevSeries({}, []), [])
 
     def test_stddev_series(self):
         series = self._generate_series_list()[:2]
         dev = functions.stddevSeries({}, [series[0]], [series[1]])[0]
         self.assertEqual(dev[:3], [1.0, 1.0, 1.0])
 
+    def test_min_series_empty(self):
+        self.assertEqual(functions.minSeries({}, None), [])
+        self.assertEqual(functions.minSeries({}, []), [])
+
     def test_min_series(self):
         series = self._generate_series_list()[:2]
         min_ = functions.minSeries({}, [series[0]], [series[1]])[0]
         self.assertEqual(min_[:3], [0, 1, 2])
+
+    def test_max_series_empty(self):
+        self.assertEqual(functions.maxSeries({}, None), [])
+        self.assertEqual(functions.maxSeries({}, []), [])
 
     def test_max_series(self):
         series = self._generate_series_list()[:2]
         max_ = functions.maxSeries({}, [series[0]], [series[1]])[0]
         self.assertEqual(max_[:3], [2, 3, 4])
 
+    def test_range_of_series_empty(self):
+        self.assertEqual(functions.rangeOfSeries({}, None), [])
+        self.assertEqual(functions.rangeOfSeries({}, []), [])
+
     def test_range_of_series(self):
         series = self._generate_series_list()[:2]
         range_ = functions.rangeOfSeries({}, [series[0]], [series[1]])[0]
         self.assertEqual(range_[:3], [2, 2, 2])
+
+    def test_percentile_of_series_empty(self):
+        self.assertEqual(functions.percentileOfSeries({}, None, 50), [])
+        self.assertEqual(functions.percentileOfSeries({}, [], 50), [])
 
     def test_percentile_of_series(self):
         series = self._generate_series_list()[:2]
@@ -386,10 +917,58 @@ class FunctionsTest(TestCase):
         last = functions.keepLastValue({}, [series], limit=97)[0]
         self.assertEqual(last[:3], [1, 1, 1])
 
+    def test_interpolate(self):
+        seriesList = [
+            TimeSeries('collectd.test-db1.load.value', 0, 1, 1,
+                       [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+                        16, 17, 18, 19, 20]),
+            TimeSeries('collectd.test-db2.load.value', 0, 1, 1,
+                       [None, 2, None, 4, None, 6, None, 8, None, 10, None,
+                        12, None, 14, None, 16, None, 18, None,  20]),
+            TimeSeries('collectd.test-db3.load.value', 0, 1, 1,
+                       [1, 2, None, None, None, 6, 7, 8, 9, 10, 11, 12, 13,
+                        14, 15, 16, 17, None, None, None]),
+            TimeSeries('collectd.test-db4.load.value', 0, 1, 1,
+                       [1, 2, 3, 4, None, 6, None, None, 9, 10, 11, None, 13,
+                        None, None, None, None, 18, 19, 20]),
+            TimeSeries('collectd.test-db5.load.value', 0, 1, 1,
+                       [1, 2, None, None, None, 6, 7, 8, 9, 10, 11, 12, 13,
+                        14, 15, 16, 17, 18, None, None]),
+            TimeSeries('collectd.test-db6.load.value', 0, 1, 1,
+                       [None, None, None, None, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                        14, 15, 16, 17, 18, None, None]),
+        ]
+        expectedResult = [
+            TimeSeries('interpolate(collectd.test-db1.load.value)', 0, 1, 1,
+                       [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+                        16, 17, 18, 19, 20]),
+            TimeSeries('interpolate(collectd.test-db2.load.value)', 0, 1, 1,
+                       [None, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+                        16, 17, 18, 19, 20]),
+            TimeSeries('interpolate(collectd.test-db3.load.value)', 0, 1, 1,
+                       [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+                        17, None, None, None]),
+            TimeSeries('interpolate(collectd.test-db4.load.value)', 0, 1, 1,
+                       [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+                        17, 18, 19, 20]),
+            TimeSeries('interpolate(collectd.test-db5.load.value)', 0, 1, 1,
+                       [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+                        17, 18, None, None]),
+            TimeSeries('interpolate(collectd.test-db6.load.value)', 0, 1, 1,
+                       [None, None, None, None, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+                        14, 15, 16, 17, 18, None, None]),
+        ]
+        results = functions.interpolate({}, seriesList)
+        self.assertEqual(results, expectedResult)
+
     def test_changed(self):
         series = self._generate_series_list(config=[[0, 1, 2, 2, 2, 3, 3, 2]])
         [changed] = functions.changed({}, series)
         self.assertEqual(list(changed), [0, 1, 1, 0, 0, 1, 0, 1])
+
+    def test_as_percent_empty(self):
+        self.assertEqual(functions.asPercent({}, None), [])
+        self.assertEqual(functions.asPercent({}, []), [])
 
     def test_as_percent(self):
         series = self._generate_series_list()
@@ -398,7 +977,7 @@ class FunctionsTest(TestCase):
         self.assertEqual(perc[3], 37.5)
 
         with self.assertRaises(ValueError):
-            functions.asPercent({}, series[:2], [1, 2])
+            functions.asPercent({}, series[:2], [1, 2, 3])
 
         perc = functions.asPercent({}, series[:2], [series[2]])[0]
         self.assertEqual(perc[:2], [0.0, 100.0])
@@ -414,6 +993,10 @@ class FunctionsTest(TestCase):
         with self.assertRaises(ValueError):
             functions.divideSeries({}, [series[0]], [1, 2])
 
+    def test_multiply_series_empty(self):
+        self.assertEqual(functions.multiplySeries({}, None), [])
+        self.assertEqual(functions.multiplySeries({}, []), [])
+
     def test_multiply_series(self):
         series = self._generate_series_list()
         mul = functions.multiplySeries({}, series[:2])[0]
@@ -422,30 +1005,169 @@ class FunctionsTest(TestCase):
         mul = functions.multiplySeries({}, series[:1])[0]
         self.assertEqual(mul[:3], [0, 1, 2])
 
+    def test_multiply_series_wildcards(self):
+        series = self._generate_series_list()
+        mul = functions.multiplySeriesWithWildcards({}, series[:2], 1)[0]
+        self.assertEqual(mul[:3], [0, 3, 8])
+
+        mul = functions.multiplySeriesWithWildcards({}, series[:1], 1)[0]
+        self.assertEqual(mul[:3], [0, 1, 2])
+
+    def test_weighted_average_empty(self):
+        self.assertEqual(functions.weightedAverage({}, [], [], 0), [])
+
     def test_weighted_average(self):
         series = self._generate_series_list()
         weight = functions.weightedAverage({}, [series[0]], [series[1]], 0)
         self.assertEqual(weight[:3], [0, 1, 2])
 
-    def test_moving_median(self):
-        series = self._generate_series_list()
-        for s in series:
-            self.write_series(s)
-        median = functions.movingMedian({
-            'startTime': parseATTime('-100s')
-        }, series, '5s')[0]
-        try:
-            self.assertEqual(median[:4], [1, 0, 1, 1])
-        except AssertionError:  # time race condition
-            self.assertEqual(median[:4], [1, 1, 1, 1])
+    def test_moving_median_empty_series(self):
+        self.assertEqual(functions.movingMedian({}, [], ""), [])
 
-        median = functions.movingMedian({
-            'startTime': parseATTime('-100s')
-        }, series, 5)[0]
-        try:
-            self.assertEqual(median[:4], [1, 0, 1, 1])
-        except AssertionError:
-            self.assertEqual(median[:4], [1, 1, 1, 1])
+    def test_moving_median_returns_none(self):
+        def gen_series_list(start=0):
+            seriesList = [
+                TimeSeries('collectd.test-db0.load.value',
+                           start+10, start+15, 1, range(start, start+15)),
+            ]
+            for series in seriesList:
+                series.pathExpression = series.name
+            return seriesList
+
+        series = gen_series_list(10)
+
+        def mock_evaluate(reqCtx, tokens, store=None):
+            seriesList = [
+                TimeSeries('collectd.test-db0.load.value', 10, 25, 1,
+                           [None] * 15)
+            ]
+            for series in seriesList:
+                series.pathExpression = series.name
+            return seriesList
+
+        expectedResults = [
+            TimeSeries('movingMedian(collectd.test-db0.load.value,10)',
+                       20, 25, 1, [None, None, None, None, None])
+        ]
+
+        with patch('graphite_api.functions.evaluateTokens', mock_evaluate):
+            result = functions.movingMedian({
+                'args': ({}, {}),
+                'startTime': datetime(1970, 1, 1, 0, 0, 0, 0, pytz.utc),
+                'endTime': datetime(1970, 1, 1, 0, 9, 0, 0, pytz.utc),
+                'data': [],
+            }, series, 10)
+
+        self.assertEqual(result, expectedResults)
+
+    def test_moving_median_returns_half_none(self):
+        def gen_series_list(start=0):
+            seriesList = [
+                TimeSeries('collectd.test-db0.load.value',
+                           start+10, start+20, 1, range(0, 10)),
+            ]
+            for series in seriesList:
+                series.pathExpression = series.name
+            return seriesList
+
+        series = gen_series_list(10)
+
+        def mock_evaluate(reqCtx, tokens, store=None):
+            seriesList = [
+                TimeSeries('collectd.test-db0.load.value', 10, 30, 1,
+                           [None] * 10 + list(range(0, 10)))
+            ]
+            for series in seriesList:
+                series.pathExpression = series.name
+            return seriesList
+
+        expectedResults = [
+            TimeSeries('movingMedian(collectd.test-db0.load.value,10)',
+                       20, 30, 1, [None, 0, 1, 1, 2, 2, 3, 3, 4, 4])
+        ]
+
+        with patch('graphite_api.functions.evaluateTokens', mock_evaluate):
+            result = functions.movingMedian({
+                'args': ({}, {}),
+                'startTime': datetime(1970, 1, 1, 0, 0, 0, 0, pytz.utc),
+                'endTime': datetime(1970, 1, 1, 0, 9, 0, 0, pytz.utc),
+                'data': [],
+            }, series, 10)
+
+        self.assertEqual(result, expectedResults)
+
+    def test_moving_median_returns_empty(self):
+        def gen_series_list(start=0):
+            seriesList = [
+                TimeSeries('collectd.test-db0.load.value',
+                           start+600, start+700, 1, range(start, start+100)),
+            ]
+            for series in seriesList:
+                series.pathExpression = series.name
+            return seriesList
+
+        series = gen_series_list(10)
+
+        def mock_evaluate(reqCtx, tokens, store=None):
+            return []
+
+        expectedResults = []
+
+        with patch('graphite_api.functions.evaluateTokens', mock_evaluate):
+            result = functions.movingMedian({
+                'args': ({}, {}),
+                'startTime': datetime(1970, 1, 1, 0, 0, 0, 0, pytz.utc),
+                'endTime': datetime(1970, 1, 1, 0, 9, 0, 0, pytz.utc),
+                'data': [],
+            }, series, 60)
+
+        self.assertEqual(result, expectedResults)
+
+    def test_moving_median(self):
+        def gen_series_list(start=0):
+            seriesList = [
+                TimeSeries('collectd.test-db0.load.value',
+                           start+600, start+700, 1, range(start, start+100)),
+            ]
+            for series in seriesList:
+                series.pathExpression = series.name
+            return seriesList
+
+        series = gen_series_list(10)
+
+        def mock_evaluate(reqCtx, tokens, store=None):
+            return gen_series_list()
+
+        expectedResults = [[
+            TimeSeries('movingMedian(collectd.test-db0.load.value,60)',
+                       660, 700, 1, range(30, 70)),
+        ], [
+            TimeSeries('movingMedian(collectd.test-db0.load.value,"-1min")',
+                       660, 700, 1, range(30, 70)),
+        ]]
+
+        with patch('graphite_api.functions.evaluateTokens', mock_evaluate):
+            result = functions.movingMedian({
+                'args': ({}, {}),
+                'startTime': datetime(1970, 1, 1, 0, 0, 0, 0, pytz.utc),
+                'endTime': datetime(1970, 1, 1, 0, 9, 0, 0, pytz.utc),
+                'data': [],
+            }, series, 60)
+            self.assertEqual(result, expectedResults[0])
+
+            result = functions.movingMedian({
+                'args': ({}, {}),
+                'startTime': datetime(1970, 1, 1, 0, 0, 0, 0, pytz.utc),
+                'endTime': datetime(1970, 1, 1, 0, 9, 0, 0, pytz.utc),
+                'data': [],
+            }, series, "-1min")
+            self.assertEqual(result, expectedResults[1])
+
+    def test_square_root(self):
+        series = self._generate_series_list()
+        square_root = functions.squareRoot({}, series)[0]
+        self.assertEqual(square_root[:5],
+                         [0.0, 1.0, math.sqrt(2), math.sqrt(3), 2.0])
 
     def test_invert(self):
         series = self._generate_series_list()
@@ -473,25 +1195,153 @@ class FunctionsTest(TestCase):
         offset = functions.offsetToZero({}, series)[0]
         self.assertEqual(offset[:3], [None, 0, 1])
 
-    def test_moving_average(self):
-        series = self._generate_series_list()
-        for s in series:
-            self.write_series(s)
-        average = functions.movingAverage({
-            'startTime': parseATTime('-100s')
-        }, series, '5s')[0]
-        try:
-            self.assertEqual(list(average)[:4], [0.5, 1/3., 0.5, 0.8])
-        except AssertionError:  # time race condition
-            self.assertEqual(list(average)[:4], [1, 3/4., 0.8, 1.2])
+    def test_moving_average_empty_series(self):
+        self.assertEqual(functions.movingAverage({}, [], ""), [])
 
-        average = functions.movingAverage({
-            'startTime': parseATTime('-100s')
-        }, series, 5)[0]
-        try:
-            self.assertEqual(average[:4], [0.5, 1/3., 0.5, 0.8])
-        except AssertionError:
-            self.assertEqual(list(average)[:4], [1, 3/4., 0.8, 1.2])
+    def test_moving_average_returns_none(self):
+        def gen_series_list(start=0):
+            seriesList = [
+                TimeSeries('collectd.test-db0.load.value',
+                           start+10, start+15, 1, range(start, start+15)),
+            ]
+            for series in seriesList:
+                series.pathExpression = series.name
+            return seriesList
+
+        series = gen_series_list(10)
+
+        def mock_evaluate(reqCtx, tokens, store=None):
+            seriesList = [
+                TimeSeries('collectd.test-db0.load.value', 10, 25, 1,
+                           [None] * 15)
+            ]
+            for series in seriesList:
+                series.pathExpression = series.name
+            return seriesList
+
+        expectedResults = [
+            TimeSeries('movingAverage(collectd.test-db0.load.value,10)',
+                       20, 25, 1, [None, None, None, None, None])
+        ]
+
+        with patch('graphite_api.functions.evaluateTokens', mock_evaluate):
+            result = functions.movingAverage({
+                'args': ({}, {}),
+                'startTime': datetime(1970, 1, 1, 0, 0, 0, 0, pytz.utc),
+                'endTime': datetime(1970, 1, 1, 0, 9, 0, 0, pytz.utc),
+                'data': [],
+            }, series, 10)
+
+        self.assertEqual(result, expectedResults)
+
+    def test_moving_average_returns_half_none(self):
+        def gen_series_list(start=0):
+            seriesList = [
+                TimeSeries('collectd.test-db0.load.value',
+                           start+10, start+20, 1, range(0, 10)),
+            ]
+            for series in seriesList:
+                series.pathExpression = series.name
+            return seriesList
+
+        series = gen_series_list(10)
+
+        def mock_evaluate(reqCtx, tokens, store=None):
+            seriesList = [
+                TimeSeries('collectd.test-db0.load.value', 10, 30, 1,
+                           [None] * 10 + list(range(0, 10)))
+            ]
+            for series in seriesList:
+                series.pathExpression = series.name
+            return seriesList
+
+        expectedResults = [
+            TimeSeries('movingAverage(collectd.test-db0.load.value,10)',
+                       20, 30, 1, [None, 0.0, 0.5, 1.0, 1.5,
+                                   2.0, 2.5, 3.0, 3.5, 4.0])
+        ]
+
+        with patch('graphite_api.functions.evaluateTokens', mock_evaluate):
+            result = functions.movingAverage({
+                'args': ({}, {}),
+                'startTime': datetime(1970, 1, 1, 0, 0, 0, 0, pytz.utc),
+                'endTime': datetime(1970, 1, 1, 0, 9, 0, 0, pytz.utc),
+                'data': [],
+            }, series, 10)
+
+        self.assertEqual(result, expectedResults)
+
+    def test_moving_average_returns_empty(self):
+        def gen_series_list(start=0):
+            seriesList = [
+                TimeSeries('collectd.test-db0.load.value',
+                           start+600, start+700, 1, range(start, start+100)),
+            ]
+            for series in seriesList:
+                series.pathExpression = series.name
+            return seriesList
+
+        series = gen_series_list(10)
+
+        def mock_evaluate(reqCtx, tokens, store=None):
+            return []
+
+        expectedResults = []
+
+        with patch('graphite_api.functions.evaluateTokens', mock_evaluate):
+            result = functions.movingAverage({
+                'args': ({}, {}),
+                'startTime': datetime(1970, 1, 1, 0, 0, 0, 0, pytz.utc),
+                'endTime': datetime(1970, 1, 1, 0, 9, 0, 0, pytz.utc),
+                'data': [],
+            }, series, 60)
+
+        self.assertEqual(result, expectedResults)
+
+    def test_moving_average(self):
+        def gen_series_list(start=0):
+            seriesList = [
+                TimeSeries('collectd.test-db0.load.value',
+                           start+600, start+700, 1, range(start, start+100)),
+            ]
+            for series in seriesList:
+                series.pathExpression = series.name
+            return seriesList
+
+        series = gen_series_list(10)
+
+        def mock_evaluate(reqCtx, tokens, store=None):
+            return gen_series_list()
+
+        def frange(x, y, jump):
+            while x < y:
+                yield x
+                x += jump
+
+        expectedResults = [[
+            TimeSeries('movingAverage(collectd.test-db0.load.value,60)',
+                       660, 700, 1, frange(29.5, 69.5, 1)),
+        ], [
+            TimeSeries('movingAverage(collectd.test-db0.load.value,"-1min")',
+                       660, 700, 1, frange(29.5, 69.5, 1)),
+        ]]
+
+        with patch('graphite_api.functions.evaluateTokens', mock_evaluate):
+            result = functions.movingAverage({
+                'args': ({}, {}),
+                'startTime': datetime(1970, 1, 1, 0, 0, 0, 0, pytz.utc),
+                'endTime': datetime(1970, 1, 1, 0, 9, 0, 0, pytz.utc),
+                'data': [],
+            }, series, 60)
+            self.assertEqual(result, expectedResults[0])
+
+            result = functions.movingAverage({
+                'args': ({}, {}),
+                'startTime': datetime(1970, 1, 1, 0, 0, 0, 0, pytz.utc),
+                'endTime': datetime(1970, 1, 1, 0, 9, 0, 0, pytz.utc),
+                'data': [],
+            }, series, "-1min")
+            self.assertEqual(result, expectedResults[1])
 
     def test_cumulative(self):
         series = self._generate_series_list(config=[range(100)])
@@ -516,6 +1366,20 @@ class FunctionsTest(TestCase):
         der = functions.derivative({}, series)[0]
         self.assertEqual(der[:3], [None, 1, 1])
 
+    def test_delay(self):
+        seriesList = [
+            TimeSeries('collectd.test-db1.load.value', 0, 1, 1,
+                       [range(18)] + [None, None])
+        ]
+        delay = 2
+        expected = [
+            TimeSeries('delay(collectd.test-db1.load.value,2)', 0, 1, 1,
+                       [None, None] + [range(18)]),
+        ]
+        result = functions.delay({}, seriesList, delay)
+        self.assertEqual(len(expected), len(result))
+        self.assertEqual(expected, result)
+
     def test_per_second(self):
         series = self._generate_series_list(config=[range(100)])
         series[0].step = 0.1
@@ -527,12 +1391,33 @@ class FunctionsTest(TestCase):
         per_sec = functions.perSecond({}, series, maxValue=20)[0]
         self.assertEqual(per_sec[:3], [None, None, None])
 
+    def test_per_second_nones(self):
+        seriesList = [
+            TimeSeries('test', 0, 600, 60,
+                       [0, 60, None, 180, None, 300, None, 420, None, 540])
+        ]
+        expected = [
+            TimeSeries('perSecond(test)', 0, 600, 60,
+                       [None, 1, None, 1, None, 1, None, 1, None, 1])
+        ]
+        result = functions.perSecond({}, seriesList)
+        self.assertEqual(expected, result)
+
     def test_integral(self):
         series = self._generate_series_list(
             config=[list(range(1, 10)) * 9 + [None] * 10])
         integral = functions.integral({}, series)[0]
         self.assertEqual(integral[:3], [1, 3, 6])
         self.assertEqual(integral[-11:], [405] + [None] * 10)
+
+    def test_integral_by_interval(self):
+        series = self._generate_series_list(
+            config=[list(range(1, 10)) * 9 + [None] * 10])
+        integral = functions.integralByInterval({
+            'startTime': parseATTime('-101s')
+        }, series, '100s')[0]
+        self.assertEqual(integral[:3], [1, 3, 6])
+        self.assertEqual(integral[-11:], [405] * 11)
 
     def test_non_negative_derivative(self):
         series = self._generate_series_list(config=[list(range(10)) * 10])
@@ -581,12 +1466,29 @@ class FunctionsTest(TestCase):
             "collectd.test-db1.load.value Current:100.00    Max:100.00    "
             "Min:0.00    ")
 
+        series = self._generate_series_list()
+        cacti = functions.cactiStyle({}, series, units='b')
+        self.assertEqual(
+            cacti[0].name,
+            "collectd.test-db1.load.value Current:100.00 b    Max:100.00 b    "
+            "Min:0.00 b    ")
+
+        series = self._generate_series_list()
+        cacti = functions.cactiStyle({}, series, 'binary', 'b')
+        self.assertEqual(
+            cacti[0].name,
+            "collectd.test-db1.load.value Current:100.00 b    Max:100.00 b    "
+            "Min:0.00 b    ")
+
         series = self._generate_series_list(config=[[None] * 100])
         cacti = functions.cactiStyle({}, series)
         self.assertEqual(
             cacti[0].name,
             "collectd.test-db1.load.value Current:nan     Max:nan     "
             "Min:nan     ")
+
+        cacti = functions.cactiStyle({}, [])
+        self.assertEqual(cacti, [])
 
     def test_alias_by_metric(self):
         series = self._generate_series_list(config=[range(100)])
@@ -652,12 +1554,18 @@ class FunctionsTest(TestCase):
         max_above = functions.maximumAbove({}, series, 98)
         self.assertEqual(max_above, series)
 
+    def test_max_above_all_none(self):
+        self.assertEqual(functions.maximumAbove({}, [[None]], 1), [])
+
     def test_min_above(self):
         series = self._generate_series_list(config=[range(100, 200)])
         min_above = functions.minimumAbove({}, series, 200)
         self.assertEqual(min_above, [])
         min_above = functions.minimumAbove({}, series, 99)
         self.assertEqual(min_above, series)
+
+    def test_min_above_all_none(self):
+        self.assertEqual(functions.minimumAbove({}, [[None]], 1), [])
 
     def test_max_below(self):
         series = self._generate_series_list(config=[range(100)])
@@ -666,12 +1574,18 @@ class FunctionsTest(TestCase):
         max_below = functions.maximumBelow({}, series, 100)
         self.assertEqual(max_below, series)
 
+    def test_max_below_all_none(self):
+        self.assertEqual(functions.maximumBelow({}, [[None]], 1), [[None]])
+
     def test_min_below(self):
         series = self._generate_series_list(config=[range(100)])
         min_below = functions.minimumBelow({}, series, -1)
         self.assertEqual(min_below, [])
         min_below = functions.minimumBelow({}, series, 0)
         self.assertEqual(min_below, series)
+
+    def test_min_below_all_none(self):
+        self.assertEqual(functions.minimumBelow({}, [[None]], 1), [[None]])
 
     def test_highest_current(self):
         series = self._generate_series_list(config=[range(100),
@@ -698,12 +1612,18 @@ class FunctionsTest(TestCase):
         above = functions.currentAbove({}, series, 98)
         self.assertEqual(above, series)
 
+    def test_current_above_all_none(self):
+        self.assertEqual(functions.currentAbove({}, [[None]], 1), [])
+
     def test_current_below(self):
         series = self._generate_series_list(config=[range(100)])
         below = functions.currentBelow({}, series, 50)
         self.assertEqual(len(below), 0)
         below = functions.currentBelow({}, series, 100)
         self.assertEqual(below, series)
+
+    def test_current_below_all_none(self):
+        self.assertEqual(functions.currentBelow({}, [[None]], 1), [[None]])
 
     def test_highest_average(self):
         series = self._generate_series_list(config=[
@@ -737,6 +1657,9 @@ class FunctionsTest(TestCase):
         above = functions.averageAbove({}, series, 40)
         self.assertEqual(above, series)
 
+    def test_average_above_all_none(self):
+        self.assertEqual(functions.averageAbove({}, [[None]], 1), [])
+
     def test_average_below(self):
         series = self._generate_series_list(config=[range(100)])
         below = functions.averageBelow({}, series, 40)
@@ -744,6 +1667,9 @@ class FunctionsTest(TestCase):
 
         below = functions.averageBelow({}, series, 50)
         self.assertEqual(below, series)
+
+    def test_average_below_all_none(self):
+        self.assertEqual(functions.averageBelow({}, [[None]], 1), [[None]])
 
     def test_average_outside_percentile(self):
         series = self._generate_series_list(
@@ -768,6 +1694,9 @@ class FunctionsTest(TestCase):
             config=[range(100) for i in range(10)])))
         sorted_s = functions.sortByName({}, series)
         self.assertEqual(sorted_s[0].name, series[-1].name)
+
+        sorted_n = functions.sortByName({}, series, True)
+        self.assertEqual(sorted_n[0].name, series[-1].name)
 
     def test_sort_by_total(self):
         series = self._generate_series_list(
@@ -810,6 +1739,11 @@ class FunctionsTest(TestCase):
         above = functions.useSeriesAbove(ctx, series, 10, 'foo', 'baz')
         self.assertEqual(len(above), 0)
 
+    def test_fallback_series(self):
+        series = self._generate_series_list()
+        self.assertEqual(functions.fallbackSeries({}, series, []), series)
+        self.assertEqual(functions.fallbackSeries({}, [], series), series)
+
     def test_most_deviant(self):
         series = self._generate_series_list(config=[
             range(1, i * 100, i) for i in range(1, 10)] + [[None] * 100])
@@ -822,33 +1756,165 @@ class FunctionsTest(TestCase):
         dev = functions.stdev({}, series, 10)[0]
         self.assertEqual(dev[1], 0.5)
 
-    def test_holt_winters(self):
-        timespan = 3600 * 24 * 8  # 8 days
-        stop = int(time.time())
-        step = 100
-        series = TimeSeries('foo.bar',
-                            stop - timespan,
-                            stop,
-                            step,
-                            [x**1.5 for x in range(0, timespan, step)])
-        series[10] = None
-        series.pathExpression = 'foo.bar'
-        self.write_series(series, [(100, timespan)])
+    def test_stdev_math_domain(self):
+        # This data set is enough to trigger a math domain error in stdev.
+        # The last two data points should be NaN.
+        inputData = [0.9, 0.1, 0.5, 0.7, 0.5, 0.4, 0.4, 0.3, 0.6,
+                     0.6333333333333333, 1.3,
+                     0.6333333333333333, 0.6185185185185186,
+                     0.3, 0.5, 0.6, 0.3, 1.0, 0.6, 0.9, 0.4,
+                     0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        series = [
+            TimeSeries('collectd.test-db0.load.value', 600, 760, 5, inputData)
+        ]
+        series[0].pathExpression = series[0].name
 
-        ctx = {
-            'startTime': parseATTime('-1d'),
+        result = functions.stdev({}, series, 10)[0]
+        self.assertEqual(result[-2:], [None, None])
+
+    def test_holt_winters_analysis_none(self):
+        seriesList = TimeSeries('collectd.test-db0.load.value',
+                                660, 700, 1, [None])
+        expectedResults = {
+            'predictions': TimeSeries(
+                'holtWintersForecast(collectd.test-db0.load.value)',
+                660, 700, 1, [None]),
+            'deviations': TimeSeries(
+                'holtWintersDeviation(collectd.test-db0.load.value)',
+                660, 700, 1, [0]),
+            'seasonals': [0],
+            'slopes': [0],
+            'intercepts': [None]
         }
-        analysis = functions.holtWintersForecast(ctx, [series])
-        self.assertEqual(len(analysis), 1)
 
-        analysis = functions.holtWintersConfidenceBands(ctx, [series])
-        self.assertEqual(len(analysis), 2)
+        result = functions.holtWintersAnalysis(seriesList)
+        self.assertEqual(result, expectedResults)
 
-        analysis = functions.holtWintersConfidenceArea(ctx, [series])
-        self.assertEqual(len(analysis), 2)
+    def test_holt_winters_forecast(self):
+        def gen_series_list(start=0):
+            seriesList = [
+                TimeSeries('collectd.test-db0.load.value',
+                           start+600, start+700, 1, range(start, start+100)),
+            ]
+            for series in seriesList:
+                series.pathExpression = series.name
+            return seriesList
 
-        analysis = functions.holtWintersAberration(ctx, [series])
-        self.assertEqual(len(analysis), 1)
+        series = gen_series_list(10)
+
+        def mock_evaluate(reqCtx, tokens, store=None):
+            return gen_series_list()
+
+        expectedResults = [
+            TimeSeries('holtWintersForecast(collectd.test-db0.load.value)',
+                       605400, 700, 1, [])
+        ]
+
+        with patch('graphite_api.functions.evaluateTokens', mock_evaluate):
+            result = functions.holtWintersForecast({
+                'args': ({}, {}),
+                'startTime': datetime(1970, 2, 1, 0, 0, 0, 0, pytz.utc),
+                'endTime': datetime(1970, 2, 1, 0, 9, 0, 0, pytz.utc),
+                'data': [],
+            }, series)
+        self.assertEqual(result, expectedResults)
+
+    def test_holt_winters(self):
+        points = 10
+        step = 600
+        start_time = 2678400  # 1970-02-01
+        week_seconds = 7 * 86400
+
+        def hw_range(x, y, jump):
+            while x < y:
+                yield (x / jump) % 10
+                x += jump
+
+        def gen_series_list(start=0, points=10):
+            seriesList = [
+                TimeSeries('collectd.test-db0.load.value',
+                           start, start+(points*step), step,
+                           hw_range(0, points*step, step)),
+            ]
+            for series in seriesList:
+                series.pathExpression = series.name
+            return seriesList
+
+        series = gen_series_list(start_time, points)
+
+        def mock_evaluate(reqCtx, tokens, store=None):
+            return gen_series_list(start_time - week_seconds,
+                                   (week_seconds / step) + points)
+
+        expectedResults = [[
+            TimeSeries(
+                'holtWintersConfidenceLower(collectd.test-db0.load.value)',
+                start_time, start_time+(points*step), step,
+                [0.2841206166091448, 1.0581027098774411, 0.3338172102994683,
+                 0.5116859493263242, -0.18199175514936972, 0.2366173792019426,
+                 -1.2941554508809152, -0.513426806531049, -0.7970905542723132,
+                 0.09868900726536012]
+            ),
+            TimeSeries(
+                'holtWintersConfidenceUpper(collectd.test-db0.load.value)',
+                start_time, start_time+(points*step), step,
+                [8.424944558327624, 9.409422251880809, 10.607070189221787,
+                 10.288439865038768, 9.491556863132963, 9.474595784593738,
+                 8.572310478053845, 8.897670449095346, 8.941566968508148,
+                 9.409728797779282]
+            ),
+        ], [
+            TimeSeries(
+                'holtWintersConfidenceArea(collectd.test-db0.load.value)',
+                start_time, start_time+(points*step), step,
+                [0.2841206166091448, 1.0581027098774411, 0.3338172102994683,
+                 0.5116859493263242, -0.18199175514936972, 0.2366173792019426,
+                 -1.2941554508809152, -0.513426806531049, -0.7970905542723132,
+                 0.09868900726536012]
+            ),
+            TimeSeries(
+                'holtWintersConfidenceArea(collectd.test-db0.load.value)',
+                start_time, start_time+(points*step), step,
+                [8.424944558327624, 9.409422251880809, 10.607070189221787,
+                 10.288439865038768, 9.491556863132963, 9.474595784593738,
+                 8.572310478053845, 8.897670449095346, 8.941566968508148,
+                 9.409728797779282]
+            ),
+        ], [
+            TimeSeries(
+                'holtWintersAberration(collectd.test-db0.load.value)',
+                start_time, start_time+(points*step), step,
+                [-0.2841206166091448, -0.05810270987744115,
+                 0, 0, 0, 0, 0, 0, 0, 0]
+            )
+        ]]
+        expectedResults[1][0].options = {'invisible': True, 'stacked': True}
+        expectedResults[1][1].options = {'stacked': True}
+
+        with patch('graphite_api.functions.evaluateTokens', mock_evaluate):
+            result = functions.holtWintersConfidenceBands({
+                'args': ({}, {}),
+                'startTime': datetime(1970, 2, 1, 0, 0, 0, 0, pytz.utc),
+                'endTime': datetime(1970, 2, 1, 0, 9, 0, 0, pytz.utc),
+                'data': []
+                }, series)
+            self.assertEqual(result, expectedResults[0])
+
+            result = functions.holtWintersConfidenceArea({
+                'args': ({}, {}),
+                'startTime': datetime(1970, 2, 1, 0, 0, 0, 0, pytz.utc),
+                'endTime': datetime(1970, 2, 1, 0, 9, 0, 0, pytz.utc),
+                'data': []
+                }, series)
+            self.assertEqual(result, expectedResults[1])
+
+            result = functions.holtWintersAberration({
+                'args': ({}, {}),
+                'startTime': datetime(1970, 2, 1, 0, 0, 0, 0, pytz.utc),
+                'endTime': datetime(1970, 2, 1, 0, 9, 0, 0, pytz.utc),
+                'data': []
+                }, series)
+            self.assertEqual(result, expectedResults[2])
 
     def test_dashed(self):
         series = self._generate_series_list(config=[range(100)])
@@ -909,17 +1975,26 @@ class FunctionsTest(TestCase):
             'endTime': parseATTime('now'),
         }
         line = functions.constantLine(ctx, 12)[0]
-        self.assertEqual(list(line), [12, 12])
-        self.assertEqual(line.step, 3600 * 24)
+        self.assertEqual(list(line), [12, 12, 12])
+        self.assertEqual(line.step, 3600 * 24 // 2)
 
-    def test_agg_line(self):
+    def test_aggregate_line(self):
         ctx = {
             'startTime': parseATTime('-1d'),
             'endTime': parseATTime('now'),
         }
         series = self._generate_series_list(config=[range(100)])
         line = functions.aggregateLine(ctx, series)[0]
-        self.assertEqual(list(line), [49.5, 49.5])
+        self.assertEqual(list(line), [49.5, 49.5, 49.5])
+
+        line = functions.aggregateLine(ctx, series, 'avg')[0]
+        self.assertEqual(list(line), [49.5, 49.5, 49.5])
+
+        line = functions.aggregateLine(ctx, series, 'min')[0]
+        self.assertEqual(list(line), [0, 0, 0])
+
+        line = functions.aggregateLine(ctx, series, 'max')[0]
+        self.assertEqual(list(line), [99, 99, 99])
 
         with self.assertRaises(ValueError):
             functions.aggregateLine(ctx, series, 'foo')
@@ -930,13 +2005,13 @@ class FunctionsTest(TestCase):
             'endTime': parseATTime('now'),
         }
         threshold = functions.threshold(ctx, 123, 'foobar')[0]
-        self.assertEqual(list(threshold), [123, 123])
+        self.assertEqual(list(threshold), [123, 123, 123])
 
         threshold = functions.threshold(ctx, 123)[0]
-        self.assertEqual(list(threshold), [123, 123])
+        self.assertEqual(list(threshold), [123, 123, 123])
 
         threshold = functions.threshold(ctx, 123, 'foo', 'red')[0]
-        self.assertEqual(list(threshold), [123, 123])
+        self.assertEqual(list(threshold), [123, 123, 123])
         self.assertEqual(threshold.color, 'red')
 
     def test_non_null(self):
@@ -961,6 +2036,17 @@ class FunctionsTest(TestCase):
         count = functions.countSeries({}, series)[0]
         self.assertEqual(list(count), [2] * 100)
 
+    def test_empty_count(self):
+        expectedResult = [
+            TimeSeries('0', 0, 600, 300, [0, 0, 0]),
+        ]
+        ctx = {
+            'startTime': datetime(1970, 1, 1, 0, 0, 0, 0, pytz.utc),
+            'endTime': datetime(1970, 1, 1, 0, 10, 0, 0, pytz.utc),
+        }
+        result = functions.countSeries(ctx)
+        self.assertEqual(result, expectedResult)
+
     def test_group_by_node(self):
         series = self._generate_series_list(config=[range(100),
                                                     range(100, 200)])
@@ -974,6 +2060,29 @@ class FunctionsTest(TestCase):
         self.assertEqual(len(grouped), 1)
         self.assertEqual(grouped[0].name, 'test-db1')
         self.assertEqual(list(grouped[0])[:3], [100, 102, 104])
+
+    def test_group_by_nodes(self):
+        seriesList = [
+            TimeSeries('group1.server1.load5', 0, 2, 1, [10, 20]),
+            TimeSeries('group1.server1.load10', 0, 2, 1, [1, 2]),
+            TimeSeries('group1.server2.load5', 0, 2, 1, [30, 40]),
+            TimeSeries('group1.server2.load10', 0, 2, 1, [3, 4]),
+            TimeSeries('group2.server1.load5', 0, 2, 1, [40, 50]),
+            TimeSeries('group2.server1.load10', 0, 2, 1, [4, 5]),
+            TimeSeries('group2.server2.load5', 0, 2, 1, [60, 70]),
+            TimeSeries('group2.server2.load10', 0, 2, 1, [6, 7]),
+        ]
+        for series in seriesList:
+            series.pathExpression = series.name
+        grouped = functions.groupByNodes({}, seriesList,
+                                         'sumSeries', 0, 2)
+
+        expectedNames = ['group1.load5', 'group1.load10',
+                         'group2.load5', 'group2.load10']
+        self.assertEqual([s.name for s in grouped], expectedNames)
+
+        group1_load10 = grouped[1]
+        self.assertEqual(list(group1_load10), [4, 6])
 
     def test_exclude(self):
         series = self._generate_series_list(config=[range(100),
@@ -1028,6 +2137,7 @@ class FunctionsTest(TestCase):
         ctx = {
             'startTime': parseATTime('-1min'),
             'endTime': parseATTime('now'),
+            'tzinfo': pytz.timezone('UTC'),
         }
         series = self._generate_series_list(config=[list(range(99)) + [None]])
         for s in series:
@@ -1038,6 +2148,13 @@ class FunctionsTest(TestCase):
 
         hit = functions.hitcount(ctx, series, '5s', True)[0]
         self.assertEqual(hit[:3], [220, 245, 270])
+
+        try:
+            hit = functions.hitcount(ctx, series, '1min', True)[0]
+            hit = functions.hitcount(ctx, series, '1h', True)[0]
+            hit = functions.hitcount(ctx, series, '1d', True)[0]
+        except ValueError as e:
+            self.fail("hitcount() raised ValueError: %s" % str(e))
 
     def test_random_walk(self):
         ctx = {
@@ -1116,3 +2233,67 @@ class FunctionsTest(TestCase):
         series = [TimeSeries("foo", 0, 1, 1, [-10000, -20000, -30000, -40000])]
         [result] = functions.legendValue({}, series, "avg", "si")
         self.assertEqual(result.name, "foo                 avg  -25.00K   ")
+
+    def test_linear_regression(self):
+        now = int(time.time())
+        now -= now % 60
+
+        # savedSeries would be eg: ('test.value', 180, 480, 60)
+        savedStart = now - 1320
+        savedEnd = now - 1020
+        savedSeries = TimeSeries('test.value', savedStart, savedEnd, 60,
+                                 [3, None, 5, 6, None, 8])
+        savedSeries.pathExpression = 'test.value'
+        self.write_series(savedSeries, [(60, 60)])
+
+        # inputSeries would be eg: ('test.value', 1200, 1500, 60)
+        inputStart = now - 300
+        inputSeries = TimeSeries('test.value', inputStart, now, 60,
+                                 [123, None, None, 456, None, None, None])
+        inputSeries.pathExpression = 'test.value'
+
+        results = functions.linearRegression({
+            'startTime': parseATTime(str(inputStart)),
+        }, [inputSeries], str(savedStart), str(savedEnd))
+
+        expected = [
+            TimeSeries('linearRegression(test.value, %s, %s)' %
+                       (savedStart, savedEnd), inputStart, now, 60,
+                       [20.0, 21.0, 22.0, 23.0, 24.0, 25.0, 26.0])
+        ]
+
+        # regression function calculated from datapoints on minutes 3 to 8
+        self.assertEqual(results, expected)
+
+    def test_apply_by_node(self):
+        end = int(time.time())
+        start = end - 3
+
+        seriesList = [
+            TimeSeries('servers.s1.disk.bytes_used',
+                       start, end, 1, [10, 20, 30]),
+            TimeSeries('servers.s1.disk.bytes_free',
+                       start, end, 1, [90, 80, 70]),
+            TimeSeries('servers.s2.disk.bytes_used',
+                       start, end, 1, [1, 2, 3]),
+            TimeSeries('servers.s2.disk.bytes_free',
+                       start, end, 1, [99, 98, 97])
+        ]
+        for series in seriesList:
+            series.pathExpression = series.name
+            self.write_series(series)
+
+        expectedResults = [
+            TimeSeries('servers.s1.disk.pct_used',
+                       start, end, 1, [0.10, 0.20, 0.30]),
+            TimeSeries('servers.s2.disk.pct_used', start, end, 1,
+                       [0.01, 0.02, 0.03])
+        ]
+
+        result = functions.applyByNode({
+                'startTime': parseATTime(str(start - 1)),
+                'endTime': parseATTime(str(end - 1)),
+            }, seriesList, 1,
+            'divideSeries(%.disk.bytes_used, sumSeries(%.disk.bytes_*))',
+            '%.disk.pct_used')
+        self.assertEqual(result, expectedResults)

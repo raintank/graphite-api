@@ -27,11 +27,32 @@ class RenderTest(TestCase):
 
     def test_render_view(self):
         response = self.app.get(self.url, query_string={'target': 'test',
-                                                        'format': 'json'})
+                                                        'format': 'json',
+                                                        'noCache': 'true'})
         self.assertEqual(json.loads(response.data.decode('utf-8')), [])
+
+        response = self.app.get(self.url, query_string={'target': 'test',
+                                                        'format': 'raw',
+                                                        'noCache': 'true'})
+        self.assertEqual(response.data.decode('utf-8'), "")
+        self.assertEqual(response.headers['Content-Type'], 'text/plain')
+
+        response = self.app.get(self.url, query_string={'target': 'test',
+                                                        'format': 'pdf'})
+        self.assertEqual(response.headers['Content-Type'], 'application/x-pdf')
 
         response = self.app.get(self.url, query_string={'target': 'test'})
         self.assertEqual(response.headers['Content-Type'], 'image/png')
+
+        response = self.app.get(self.url, query_string={'target': 'test',
+                                                        'format': 'dygraph',
+                                                        'noCache': 'true'})
+        self.assertEqual(json.loads(response.data.decode('utf-8')), {})
+
+        response = self.app.get(self.url, query_string={'target': 'test',
+                                                        'format': 'rickshaw',
+                                                        'noCache': 'true'})
+        self.assertEqual(json.loads(response.data.decode('utf-8')), [])
 
         self.create_db()
         response = self.app.get(self.url, query_string={'target': 'test',
@@ -58,7 +79,64 @@ class RenderTest(TestCase):
                                                         'maxDataPoints': 200,
                                                         'format': 'json'})
         data = json.loads(response.data.decode('utf-8'))
-        self.assertEqual(len(data[0]['datapoints']), 60)
+        # 59 is a time race cond
+        self.assertTrue(len(data[0]['datapoints']) in [59, 60])
+
+        response = self.app.get(self.url, query_string={'target': 'test',
+                                                        'noNullPoints': 1,
+                                                        'format': 'json'})
+        data = json.loads(response.data.decode('utf-8'))
+        self.assertEqual(data[0]['datapoints'],
+                         [[0.5, self.ts - 2],
+                          [0.4, self.ts - 1],
+                          [0.6, self.ts]])
+
+        response = self.app.get(self.url, query_string={'target': 'test',
+                                                        'format': 'raw'})
+        try:
+            self.assertEqual(
+                response.data.decode('utf-8'),
+                'test,%d,%d,1|%s' % (self.ts - 59, self.ts + 1,
+                                     'None,' * 57 + '0.5,0.4,0.6\n'))
+        except AssertionError:
+            self.assertEqual(
+                response.data.decode('utf-8'),
+                'test,%d,%d,1|%s' % (self.ts - 58, self.ts + 2,
+                                     'None,' * 56 + '0.5,0.4,0.6,None\n'))
+
+        response = self.app.get(self.url, query_string={'target': 'test',
+                                                        'format': 'dygraph'})
+        data = json.loads(response.data.decode('utf-8'))
+        end = data['data'][-4:]
+        try:
+            self.assertEqual(
+                end, [[(self.ts - 3) * 1000, None],
+                      [(self.ts - 2) * 1000, 0.5],
+                      [(self.ts - 1) * 1000, 0.4],
+                      [self.ts * 1000, 0.6]])
+        except AssertionError:
+            self.assertEqual(
+                end, [[(self.ts - 2) * 1000, 0.5],
+                      [(self.ts - 1) * 1000, 0.4],
+                      [self.ts * 1000, 0.6],
+                      [(self.ts + 1) * 1000, None]])
+
+        response = self.app.get(self.url, query_string={'target': 'test',
+                                                        'format': 'rickshaw'})
+        data = json.loads(response.data.decode('utf-8'))
+        end = data[0]['datapoints'][-4:]
+        try:
+            self.assertEqual(
+                end, [{'x': self.ts - 3, 'y': None},
+                      {'x': self.ts - 2, 'y': 0.5},
+                      {'x': self.ts - 1, 'y': 0.4},
+                      {'x': self.ts, 'y': 0.6}])
+        except AssertionError:
+            self.assertEqual(
+                end, [{'x': self.ts - 2, 'y': 0.5},
+                      {'x': self.ts - 1, 'y': 0.4},
+                      {'x': self.ts, 'y': 0.6},
+                      {'x': self.ts + 1, 'y': None}])
 
     def test_render_constant_line(self):
         response = self.app.get(self.url, query_string={
@@ -68,7 +146,7 @@ class RenderTest(TestCase):
         response = self.app.get(self.url, query_string={
             'target': 'constantLine(12)', 'format': 'json'})
         data = json.loads(response.data.decode('utf-8'))[0]['datapoints']
-        self.assertEqual(len(data), 2)
+        self.assertEqual(len(data), 3)
         for point, ts in data:
             self.assertEqual(point, 12)
 
@@ -76,7 +154,7 @@ class RenderTest(TestCase):
             'target': 'constantLine(12)', 'format': 'json',
             'maxDataPoints': 12})
         data = json.loads(response.data.decode('utf-8'))[0]['datapoints']
-        self.assertEqual(len(data), 2)
+        self.assertEqual(len(data), 3)
         for point, ts in data:
             self.assertEqual(point, 12)
 
@@ -93,7 +171,7 @@ class RenderTest(TestCase):
             'format': 'json',
         })
         data = json.loads(response.data.decode('utf-8'))[0]['datapoints']
-        self.assertEqual([d[0] for d in data], [17, 17])
+        self.assertEqual([d[0] for d in data], [17, 17, 17])
 
     def test_area_between(self):
         response = self.app.get(self.url, query_string={
@@ -141,7 +219,7 @@ class RenderTest(TestCase):
         data = json.loads(response.data.decode('utf-8'))[0]['datapoints']
 
         # all the from/until/tz combinations lead to the same window
-        expected = [[12, 1393398000], [12, 1393401600]]
+        expected = [[12, 1393398000], [12, 1393399800], [12, 1393401600]]
         self.assertEqual(data, expected)
 
         response = self.app.get(self.url, query_string={
@@ -165,9 +243,15 @@ class RenderTest(TestCase):
             {'logBase': 'e'},
             {'logBase': 1},
             {'logBase': 0.5},
+            {'logBase': 10},
             {'margin': -1},
-            {'colorList': 'orange,green,blue,#0f0'},
+            {'colorList': 'orange,green,blue,#0f00f0'},
             {'bgcolor': 'orange'},
+            {'bgcolor': '000000'},
+            {'bgcolor': '#000000'},
+            {'bgcolor': '123456'},
+            {'bgcolor': '#123456'},
+            {'bgcolor': '#12345678'},
             {'bgcolor': 'aaabbb'},
             {'bgcolor': '#aaabbb'},
             {'bgcolor': '#aaabbbff'},
@@ -179,32 +263,62 @@ class RenderTest(TestCase):
             {'uniqueLegend': 'true', '_expr': 'secondYAxis({0})'},
             {'uniqueLegend': 'true', 'vtitleRight': 'foo',
              '_expr': 'secondYAxis({0})'},
+            {'rightWidth': '1', '_expr': 'secondYAxis({0})'},
+            {'rightDashed': '1', '_expr': 'secondYAxis({0})'},
+            {'rightColor': 'black', '_expr': 'secondYAxis({0})'},
+            {'leftWidth': '1', 'target': ['secondYAxis(foo)', 'test']},
+            {'leftDashed': '1', 'target': ['secondYAxis(foo)', 'test']},
+            {'leftColor': 'black', 'target': ['secondYAxis(foo)', 'test']},
+            {'width': '10', '_expr': 'secondYAxis({0})'},
+            {'logBase': 'e', 'target': ['secondYAxis(foo)', 'test']},
             {'graphOnly': 'true', 'yUnitSystem': 'si'},
+            {'graphOnly': 'true', 'yUnitSystem': 'wat'},
             {'lineMode': 'staircase'},
             {'lineMode': 'slope'},
+            {'lineMode': 'slope', 'from': '-1s'},
             {'lineMode': 'connected'},
-            {'min': 1, 'max': 1, 'thickness': 2, 'yUnitSystem': 'welp'},
+            {'min': 1, 'max': 2, 'thickness': 2, 'yUnitSystem': 'none'},
             {'yMax': 5, 'yLimit': 0.5, 'yStep': 0.1},
             {'yMax': 'max', 'yUnitSystem': 'binary'},
+            {'yMaxLeft': 5, 'yLimitLeft': 0.5, 'yStepLeft': 0.1,
+             '_expr': 'secondYAxis({0})'},
+            {'yMaxRight': 5, 'yLimitRight': 0.5, 'yStepRight': 0.1,
+             '_expr': 'secondYAxis({0})'},
+            {'yMin': 0, 'yLimit': 0.5, 'yStep': 0.1},
+            {'yMinLeft': 0, 'yLimitLeft': 0.5, 'yStepLeft': 0.1,
+             '_expr': 'secondYAxis({0})'},
+            {'yMinRight': 0, 'yLimitRight': 0.5, 'yStepRight': 0.1,
+             '_expr': 'secondYAxis({0})'},
             {'areaMode': 'stacked', '_expr': 'stacked({0})'},
             {'lineMode': 'staircase', '_expr': 'stacked({0})'},
             {'areaMode': 'first', '_expr': 'stacked({0})'},
             {'areaMode': 'all', '_expr': 'stacked({0})'},
+            {'areaMode': 'all', 'areaAlpha': 0.5, '_expr': 'secondYAxis({0})'},
+            {'areaMode': 'all', 'areaAlpha': 0.5,
+             'target': ['secondYAxis(foo)', 'test']},
             {'areaMode': 'stacked', 'areaAlpha': 0.5, '_expr': 'stacked({0})'},
             {'areaMode': 'stacked', 'areaAlpha': 'a', '_expr': 'stacked({0})'},
+            {'areaMode': 'stacked', '_expr': 'drawAsInfinite({0})'},
             {'_expr': 'dashed(lineWidth({0}, 5))'},
             {'target': 'areaBetween(*)'},
             {'drawNullAsZero': 'true'},
             {'_expr': 'drawAsInfinite({0})'},
             {'graphType': 'pie', 'pieMode': 'average', 'title': 'Pie'},
+            {'graphType': 'pie', 'pieMode': 'maximum', 'title': 'Pie'},
+            {'graphType': 'pie', 'pieMode': 'minimum', 'title': 'Pie'},
             {'graphType': 'pie', 'pieMode': 'average', 'hideLegend': 'true'},
             {'graphType': 'pie', 'pieMode': 'average', 'valueLabels': 'none'},
             {'graphType': 'pie', 'pieMode': 'average',
              'valueLabels': 'number'},
             {'graphType': 'pie', 'pieMode': 'average', 'pieLabels': 'rotated'},
+            {'graphType': 'pie', 'pieMode': 'average', 'areaAlpha': '0.1'},
+            {'graphType': 'pie', 'pieMode': 'average', 'areaAlpha': 'none'},
+            {'graphType': 'pie', 'pieMode': 'average',
+             'valueLabelsColor': 'white'},
             {'noCache': 'true'},
             {'cacheTimeout': 5},
             {'cacheTimeout': 5},  # cache hit
+            {'tz': 'Europe/Berlin'},
         ]:
             if qs.setdefault('target', ['foo', 'test']) == ['foo', 'test']:
                 if '_expr' in qs:
@@ -298,7 +412,8 @@ class RenderTest(TestCase):
         response = self.app.get(self.url, query_string={'target': 'test',
                                                         'format': 'csv'})
         lines = response.data.decode('utf-8').strip().split('\n')
-        self.assertEqual(len(lines), 60)
+        # 59 is a time race cond
+        self.assertTrue(len(lines) in [59, 60])
         self.assertFalse(any([l.strip().split(',')[2] for l in lines]))
 
         response = self.app.get(self.url, query_string={'target': 'test',
@@ -403,3 +518,44 @@ class RenderTest(TestCase):
             },
         )
         self.assertEqual(response.status_code, 200)
+
+    def test_templates(self):
+        ts = int(time.time())
+        value = 1
+        for db in (
+            ('hosts', 'worker1', 'cpu.wsp'),
+            ('hosts', 'worker2', 'cpu.wsp'),
+        ):
+            db_path = os.path.join(WHISPER_DIR, *db)
+            if not os.path.exists(os.path.dirname(db_path)):
+                os.makedirs(os.path.dirname(db_path))
+            whisper.create(db_path, [(1, 60)])
+            whisper.update(db_path, value, ts)
+            value += 1
+
+        for query, expected in [
+            ({'target': 'template(hosts.worker1.cpu)'}, 'hosts.worker1.cpu'),
+            ({'target': 'template(constantLine($1),12)'}, '12'),
+            ({'target': 'template(constantLine($1))',
+              'template[1]': '12'}, '12.0'),
+            ({'target': 'template(constantLine($num),num=12)'}, '12'),
+            ({'target': 'template(constantLine($num))',
+              'template[num]': '12'}, '12.0'),
+            ({'target': 'template(time($1),"nameOfSeries")'}, 'nameOfSeries'),
+            ({'target': 'template(time($1))',
+              'template[1]': 'nameOfSeries'}, 'nameOfSeries'),
+            ({'target': 'template(time($name),name="nameOfSeries")'},
+             'nameOfSeries'),
+            ({'target': 'template(time($name))',
+              'template[name]': 'nameOfSeries'}, 'nameOfSeries'),
+            ({'target': 'template(sumSeries(hosts.$1.cpu),"worker1")'},
+             'sumSeries(hosts.worker1.cpu)'),
+            ({'target': 'template(sumSeries(hosts.$1.cpu))',
+              'template[1]': 'worker*'}, 'sumSeries(hosts.worker*.cpu)'),
+            ({'target': 'template(sumSeries(hosts.$host.cpu))',
+              'template[host]': 'worker*'}, 'sumSeries(hosts.worker*.cpu)'),
+        ]:
+            query['format'] = 'json'
+            response = self.app.get(self.url, query_string=query)
+            data = json.loads(response.data.decode('utf-8'))
+            self.assertEqual(data[0]['target'], expected)

@@ -28,6 +28,10 @@ class MetricsTests(TestCase):
                                                    'format': 'completer'})
         self.assertJSON(response, {'metrics': []})
 
+        response = self.app.get(url, query_string={'query': 'test',
+                                                   'format': 'nodelist'})
+        self.assertJSON(response, {'nodes': []})
+
         self._create_dbs()
 
         for _url in ['/metrics/find', '/metrics']:
@@ -117,6 +121,23 @@ class MetricsTests(TestCase):
             'name': '*',
         }]})
 
+        response = self.app.get(url, query_string={'query': '*',
+                                                   'format': 'nodelist'})
+        self.assertJSON(response, {'nodes': ['test']})
+
+        response = self.app.get(url, query_string={'query': '*.*',
+                                                   'format': 'nodelist'})
+        self.assertJSON(response, {'nodes': ['bar', 'foo', 'wat']})
+
+        response = self.app.get(url, query_string={'query': '*.*.*',
+                                                   'format': 'nodelist'})
+        self.assertJSON(response, {'nodes': ['baz', 'welp']})
+
+        response = self.app.get(url, query_string={'query': '*.*.*',
+                                                   'format': 'nodelist',
+                                                   'position': '0'})
+        self.assertJSON(response, {'nodes': ['test']})
+
     def test_find_validation(self):
         url = '/metrics/find'
         response = self.app.get(url, query_string={'query': 'foo',
@@ -190,17 +211,6 @@ class MetricsTests(TestCase):
         url = '/events/get_data'
         response = self.app.get(url)
         self.assertJSON(response, [])
-
-    def test_index(self):
-        parent = os.path.join(WHISPER_DIR, 'collectd')
-        os.makedirs(parent)
-
-        for metric in ['load', 'memory', 'cpu']:
-            db = os.path.join(parent, '{0}.wsp'.format(metric))
-            whisper.create(db, [(1, 60)])
-
-        response = self.app.put('/index')
-        self.assertJSON(response, {'success': True, 'entries': 3})
 
     def test_metrics_index(self):
         url = '/metrics/index.json'

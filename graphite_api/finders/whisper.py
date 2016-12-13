@@ -8,6 +8,7 @@ from structlog import get_logger
 from ..carbonlink import CarbonLinkPool
 from ..intervals import Interval, IntervalSet
 from ..node import BranchNode, LeafNode
+from ..utils import is_pattern
 from .._vendor import whisper
 
 from . import fs_to_metric, get_real_metric_path, match_entries
@@ -70,20 +71,35 @@ class WhisperFinder(object):
         patterns"""
         pattern = patterns[0]
         patterns = patterns[1:]
-        entries = os.listdir(current_dir)
+        has_wildcard = is_pattern(pattern)
+        using_globstar = pattern == "**"
 
-        subdirs = [e for e in entries
-                   if os.path.isdir(os.path.join(current_dir, e))]
-        matching_subdirs = match_entries(subdirs, pattern)
+        # This avoids os.listdir() for performance
+        if has_wildcard:
+            entries = os.listdir(current_dir)
+        else:
+            entries = [pattern]
+
+        if using_globstar:
+            matching_subdirs = map(lambda x: x[0], os.walk(current_dir))
+        else:
+            subdirs = [e for e in entries
+                       if os.path.isdir(os.path.join(current_dir, e))]
+            matching_subdirs = match_entries(subdirs, pattern)
+
+        # For terminal globstar, add a pattern for all files in subdirs
+        if using_globstar and not patterns:
+            patterns = ['*']
 
         if patterns:  # we've still got more directories to traverse
             for subdir in matching_subdirs:
-
                 absolute_path = os.path.join(current_dir, subdir)
                 for match in self._find_paths(absolute_path, patterns):
                     yield match
 
         else:  # we've got the last pattern
+            if not has_wildcard:
+                entries = [pattern + '.wsp', pattern + '.wsp.gz']
             files = [e for e in entries
                      if os.path.isfile(os.path.join(current_dir, e))]
             matching_files = match_entries(files, pattern + '.*')
