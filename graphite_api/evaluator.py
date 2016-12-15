@@ -1,13 +1,15 @@
 import itertools
 import re
 import six
-
+from threading import Lock
 from .render.datalib import fetchData, TimeSeries
 from .render.grammar import grammar
 
+lock = Lock()
 
 def pathsFromTarget(requestContext, target):
-    tokens = grammar.parseString(target)
+    with lock:
+        tokens = grammar.parseString(target)
     paths = list(pathsFromTokens(requestContext, tokens))
     return paths
 
@@ -64,7 +66,8 @@ def pathsFromTokens(requestContext, tokens, replacements=None, consolidateBy=Non
 
 
 def evaluateTarget(requestContext, target, data_store=None):
-    tokens = grammar.parseString(target)
+    with lock:
+        tokens = grammar.parseString(target)
 
     if data_store is None:
         paths = list(pathsFromTokens(requestContext, tokens))
